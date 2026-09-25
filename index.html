@@ -1573,7 +1573,7 @@ function drawTeacher(){
   $('#tout').onclick=()=>{TD.rows=null;TD.key='';renderTeacher()};
   const mo=$('#tmore');if(mo)mo.onclick=()=>{TD.show+=100;drawTeacher()};
 }
-render();flushOutbox();if(!CUR&&(location.hash||'#home')==='#home')setTimeout(()=>askStudent(()=>render()),150);
+render();flushOutbox();
 
 </script>
 </body>
