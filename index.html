@@ -271,8 +271,9 @@ const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const app=$('#app');
 const MEM={};const PER=new Set(['prac','best','quizBest','seen1','seen2','seen3','myrecords']);
-const skey=k=>{if(!PER.has(k))return 'bclab_'+k;let s=null;try{s=JSON.parse(localStorage.getItem('bclab_student'))}catch(e){}s=s||MEM.student;return 'bclab_'+(s?s.id+'_':'')+k};
-const store={get(k,d){const K=skey(k);try{const v=localStorage.getItem(K);if(v!=null)return JSON.parse(v)}catch(e){}return K in MEM?MEM[K]:d},set(k,v){const K=skey(k);MEM[K]=v;if(k==='student')MEM.student=v;try{localStorage.setItem(K,JSON.stringify(v))}catch(e){}}};
+let CUR=null;try{localStorage.removeItem('bclab_student')}catch(e){}
+const skey=k=>PER.has(k)?'bclab_'+(CUR?CUR.id+'_':'')+k:'bclab_'+k;
+const store={get(k,d){const K=skey(k);try{const v=localStorage.getItem(K);if(v!=null)return JSON.parse(v)}catch(e){}return K in MEM?MEM[K]:d},set(k,v){const K=skey(k);MEM[K]=v;try{localStorage.setItem(K,JSON.stringify(v))}catch(e){}}};
 const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const gauss=()=>{let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
@@ -1459,10 +1460,10 @@ function s7(el){
   $('#again',el).onclick=()=>{newExam();renderExam()};
 }
 /* ===== 학생 등록 · 기록 전송 · 교사용 결과 ===== */
-function getStudent(){return store.get('student',null)}
+function getStudent(){return CUR}
 const sLabel=s=>`${s.grade}학년 ${s.cls}반 ${s.no}번 ${s.name}`;
 function askStudent(then){
-  const s=getStudent()||{grade:'1',cls:'1',no:'',name:''};
+  const s={grade:'1',cls:'1',no:'1',name:''};
   const opt=(n,v)=>Array.from({length:n},(_,i)=>`<option ${String(i+1)===String(v)?'selected':''}>${i+1}</option>`).join('');
   modal(`<h3>실험실 출입 명부</h3><p class="small muted" style="margin-top:4px">학년·반·번호와 이름을 적어 주세요. 활동 결과가 선생님께 전달됩니다.</p>
    <form id="stuf" class="stack" style="margin-top:14px;gap:10px">
@@ -1472,7 +1473,7 @@ function askStudent(then){
      <label class="stack" style="gap:2px;flex:1;min-width:80px"><span class="small">번호</span><select id="sn">${opt(40,s.no||1)}</select></label>
     </div>
     <label class="stack" style="gap:2px"><span class="small">이름</span><input id="snm" value="${esc(s.name)}" maxlength="20" autocomplete="off" placeholder="홍길동"></label>
-    <p class="small muted">같은 컴퓨터를 여러 명이 쓸 때는 시작 전에 꼭 자기 이름으로 바꾸세요.</p>
+    <p class="small muted">접속할 때마다 새로 적어야 해요. 결과는 적은 이름으로 선생님께 전달됩니다.</p>
     <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-close>취소</button><button class="btn pri" type="submit">입장</button></div>
    </form>`,(m,close)=>{
     $('#snm',m).focus();
@@ -1480,7 +1481,7 @@ function askStudent(then){
       if(name.length<2){toast('이름을 2글자 이상 입력하세요');return}
       const g=$('#sg',m).value,c=$('#sc',m).value,n=$('#sn',m).value;
       const st={grade:g,cls:c,no:n,name,id:`${g}${String(c).padStart(2,'0')}${String(n).padStart(2,'0')}_${name}`};
-      store.set('student',st);close();updateWho();toast(`${sLabel(st)} 입장!`);then&&then()});
+      CUR=st;E=null;Q=null;close();updateWho();toast(`${sLabel(st)} 입장!`);then&&then()});
   });
 }
 function updateWho(){
@@ -1572,7 +1573,7 @@ function drawTeacher(){
   $('#tout').onclick=()=>{TD.rows=null;TD.key='';renderTeacher()};
   const mo=$('#tmore');if(mo)mo.onclick=()=>{TD.show+=100;drawTeacher()};
 }
-render();flushOutbox();
+render();flushOutbox();if(!CUR&&(location.hash||'#home')==='#home')setTimeout(()=>askStudent(()=>render()),150);
 
 </script>
 </body>
