@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="화공과 고1~3 흡광광도법 온라인 실험실 — 기초 이론 게임, 가상 기초 실습, 화학분석기능사 실기 모의시험">
+<meta name="description" content="세경고등학교 인공지능반도체과 흡광광도법 온라인 실험실 — 기초 이론 게임, 가상 기초 실습, 화학분석기능사 실기 모의시험">
 <style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <title>바이오기초화학 실험실</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -86,6 +86,8 @@ main{padding-top:24px}
 
 /* home */
 .hero{display:grid;grid-template-columns:1.1fr .9fr;gap:28px;align-items:center;padding-block:24px 8px}
+.school{font-family:var(--fd);font-size:clamp(28px,4.6vw,42px);line-height:1.15;color:var(--ink);display:flex;flex-wrap:wrap;gap:0 12px;align-items:baseline}
+.school span{color:var(--accent)}
 .hero .lead{font-size:17px;color:var(--muted);max-width:52ch;margin-top:12px}
 .door{position:relative;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}
 .units{margin-top:28px}
@@ -251,16 +253,26 @@ main{padding-top:24px}
     바이오기초화학 실험실
   </button>
   <nav class="crumbs" id="crumbs"></nav>
+  <div id="who" style="margin-left:auto"></div>
 </div></div>
 <main class="wrap" id="app"></main>
 <div id="toastbox"></div>
 
 <script>
+/* =====================================================================
+   교사 설정 — Google 스프레드시트 연결
+   README의 안내대로 Apps Script 웹 앱을 배포한 뒤,
+   아래 따옴표 안에 웹 앱 URL(https://script.google.com/macros/s/.../exec)을 붙여 넣으세요.
+   비워 두면 기록은 학생 브라우저에만 저장됩니다.
+   ===================================================================== */
+const SHEET_URL = '';
 /* ===== 공통 ===== */
 const $=(s,r=document)=>r.querySelector(s);
 const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 const app=$('#app');
-const MEM={};const store={get(k,d){try{const v=localStorage.getItem('bclab_'+k);if(v!=null)return JSON.parse(v)}catch(e){}return k in MEM?MEM[k]:d},set(k,v){MEM[k]=v;try{localStorage.setItem('bclab_'+k,JSON.stringify(v))}catch(e){}}};
+const MEM={};const PER=new Set(['prac','best','quizBest','seen1','seen2','seen3','myrecords']);
+const skey=k=>{if(!PER.has(k))return 'bclab_'+k;let s=null;try{s=JSON.parse(localStorage.getItem('bclab_student'))}catch(e){}s=s||MEM.student;return 'bclab_'+(s?s.id+'_':'')+k};
+const store={get(k,d){const K=skey(k);try{const v=localStorage.getItem(K);if(v!=null)return JSON.parse(v)}catch(e){}return K in MEM?MEM[K]:d},set(k,v){const K=skey(k);MEM[K]=v;if(k==='student')MEM.student=v;try{localStorage.setItem(K,JSON.stringify(v))}catch(e){}}};
 const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const gauss=()=>{let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
@@ -280,14 +292,17 @@ function decomp(c){const k=c.charCodeAt(0)-0xAC00;if(k<0||k>11171)return null;re
 const norm=s=>String(s).toLowerCase().replace(/[\s\-–·().,'’]/g,'').replace(/의/g,'');
 
 /* 라우터 */
-const ROUTES={home:renderHome,hub:renderHub,theory:renderTheory,practice:renderPractice,exam:renderExam};
-const CRUMB={hub:'흡광광도법',theory:'기초 이론',practice:'기초 실습',exam:'화학분석기능사'};
+const ROUTES={home:renderHome,hub:renderHub,theory:renderTheory,practice:renderPractice,exam:renderExam,teacher:renderTeacher};
+const CRUMB={hub:'흡광광도법',theory:'기초 이론',practice:'기초 실습',exam:'화학분석기능사',teacher:'교사용 결과'};
 function go(r){if(location.hash==='#'+r)render();else location.hash=r}
 function render(){
   cleanup.forEach(f=>{try{f()}catch(e){}});cleanup=[];
-  const r=(location.hash||'#home').slice(1);const fn=ROUTES[r]||renderHome;
-  const c=$('#crumbs');
-  if(r==='home'||!ROUTES[r])c.innerHTML='';
+  let r=(location.hash||'#home').slice(1);if(!ROUTES[r])r='home';
+  if(!['home','teacher'].includes(r)&&!getStudent()){const want=r;r='home';setTimeout(()=>askStudent(()=>go(want)),50)}
+  const fn=ROUTES[r];
+  const c=$('#crumbs');updateWho();
+  if(r==='home')c.innerHTML='';
+  else if(r==='teacher')c.innerHTML=`<span>›</span><span>교사용 결과</span>`;
   else if(r==='hub')c.innerHTML=`<span>›</span><span>흡광광도법</span>`;
   else c.innerHTML=`<span>›</span><button data-go="hub">흡광광도법</button><span>›</span><span>${CRUMB[r]}</span>`;
   fn();window.scrollTo(0,0);
@@ -324,12 +339,13 @@ function renderHome(){
   app.innerHTML=`
   <section class="hero">
     <div>
-      <p class="eyebrow">화공과 · 바이오기초화학 Ⅶ. 바이오 기기 분석의 기초</p>
+      <p class="school">세경고등학교 <span>인공지능반도체과</span></p>
+      <p class="eyebrow" style="margin-top:14px">바이오기초화학 Ⅶ. 바이오 기기 분석의 기초</p>
       <h1 style="margin-top:8px">바이오기초화학<br>실험실</h1>
       <p class="lead">실험복 단추를 잠그고 들어오세요. 이곳에서는 시약이 쏟아져도, 셀을 떨어뜨려도 괜찮습니다. 이론 게임으로 개념을 잡고, 가상 실험대에서 기구를 다뤄 보고, 화학분석기능사 실기 과제를 처음부터 끝까지 해 봅니다.</p>
       <div class="row" style="margin-top:20px">
         <button class="btn pri" data-go="hub">흡광광도법 실험실 입장 →</button>
-        <span class="small muted">고1~고3 화공과 대상</span>
+        <span class="small muted">고1~고3 대상</span>
       </div>
     </div>
     <div class="door">${heroArt()}</div>
@@ -338,10 +354,13 @@ function renderHome(){
     <h3 style="margin-bottom:12px">실험실 목록</h3>
     <div class="grid g2">
       <button class="unit on" data-go="hub"><span class="num">01</span><span><b>흡광광도법 (흡수 분광법)</b><br><span class="small muted">빛의 성질 · 람베르트-비어 법칙 · 분광광도계 · KMnO<sub>4</sub> 검량선</span><br>
-      <span class="row" style="gap:6px;margin-top:8px">${['theory','practice','exam'].map(k=>best[k]!=null?`<span class="pill ok">${CRUMB[k]} 최고 ${best[k]}점</span>`:'').join('')||'<span class="pill acc">운영 중</span>'}</span></span></button>
+      <span class="row" style="gap:6px;margin-top:8px">${['theory','practice','exam'].map(k=>best[k]!=null?`<span class="pill ok">${CRUMB[k]} ${k==='practice'?best[k]+'% 완료':'최고 '+best[k]+'점'}</span>`:'').join('')||'<span class="pill acc">운영 중</span>'}</span></span></button>
       <div class="unit off" aria-disabled="true"><span class="num">02</span><span><b>그 밖의 분광법</b><br><span class="small muted">형광 · 발광 · 마이크로플레이트 리더</span><br><span class="pill" style="margin-top:8px">준비 중</span></span></div>
     </div>
-  </section>`;
+  </section>
+  ${myRecordsHTML()}
+  <p class="small muted" style="margin-top:28px;text-align:right"><button class="btn sm" data-go="teacher">교사용 결과 보기</button></p>`;
+  const cb=$('#chgme');if(cb)cb.onclick=()=>askStudent(()=>render());
 }
 function heroArt(){
   // 프리즘 → 단색광 → 큐벳 → 검출기
@@ -636,6 +655,7 @@ function endQuiz(){
   const msg={S:'분광광도계가 당신을 알아봅니다. 다음 난이도 도전!',A:'거의 다 왔어요. 오답노트만 한 번 보면 S랭크.',B:'개념의 뼈대는 잡혔어요. 오답노트를 꼭 확인하세요.',C:'괜찮아요. 교과서 188~192쪽을 보고 다시 도전!'}[rank];
   const best=store.get('quizBest',{});if(best[Q.l]==null||Q.score>best[Q.l]){best[Q.l]=Q.score;store.set('quizBest',best)}
   const b2=store.get('best',{});b2.theory=Math.max(b2.theory||0,Math.round(rate*100));store.set('best',b2);
+  record('기초 이론',`${LEVELS[Q.l].sub} · ${LEVELS[Q.l].name}`,Q.score,`정답 ${Q.right}/${total} · ${rank}랭크 · 풀이 ${Q.right+Q.wrong.length}/${total} · 최대 콤보 ${Q.maxCombo}${Q.hearts<=0?' · 하트 소진':''}`);
   const L=LEVELS[Q.l];
   app.innerHTML=`<div class="card pop" style="text-align:center">
     <p class="eyebrow">${L.badge} ${L.name} 결과</p>
@@ -897,7 +917,7 @@ function renderPractice(){
   $$('[data-t]').forEach(b=>b.onclick=()=>{ptab=b.dataset.t;cleanup.forEach(f=>{try{f()}catch(e){}});cleanup=[];renderPractice()});
   ({tools:pTools,pipette:pPipette,flask:pFlask,structure:pStructure,lmax:pLmax,cell:pCell,zero:pZero})[ptab]($('#pbody'));
 }
-function markDone(k){const d=store.get('prac',{});if(!d[k]){d[k]=1;store.set('prac',d);const b2=store.get('best',{});b2.practice=Math.round(Object.keys(d).length/PTABS.length*100);store.set('best',b2);const t=$(`[data-t="${k}"]`);if(t&&!t.querySelector('.ck'))t.insertAdjacentHTML('beforeend',' <span class="ck">✓</span>')}}
+function markDone(k){const d=store.get('prac',{});if(!d[k]){d[k]=1;store.set('prac',d);record('기초 실습',(PTABS.find(x=>x[0]===k)||[k,k])[1],100,'미션 완료');const b2=store.get('best',{});b2.practice=Math.round(Object.keys(d).length/PTABS.length*100);store.set('best',b2);const t=$(`[data-t="${k}"]`);if(t&&!t.querySelector('.ck'))t.insertAdjacentHTML('beforeend',' <span class="ck">✓</span>')}}
 
 const TOOLS=[
  {k:'flask',n:'메스플라스크',svg:()=>flaskSVG({w:70,h:80,level:.6,alpha:.4}),use:'정확한 부피(100 mL)의 용액을 만드는 기구. 표준용액 조제와 미지시료 희석에 씁니다.',how:['용액을 피펫으로 넣은 뒤 증류수를 채운다','표선 근처에서는 세척병으로 한 방울씩','메니스커스 아랫면을 눈높이에서 표선에 맞춘다','파라필름으로 밀봉하고 천천히 뒤집어 섞는다'],care:'표선을 넘기면 덜어내지 말고 다시 조제합니다. 가열하지 않아요.'},
@@ -1422,6 +1442,7 @@ function s7(el){
   const ded=[];if(!(E.coat.coat&&E.coat.btn&&E.coat.shoes))ded.push(['실험복 미착용·부적합',10]);if(E.spill)ded.push(['시약 과도하게 흘림',5]);
   const total=Math.max(0,items.reduce((s,i)=>s+i[1],0)-ded.reduce((s,d)=>s+d[1],0));
   const b2=store.get('best',{});b2.exam=Math.max(b2.exam||0,total);store.set('best',b2);
+  if(!E.recorded){E.recorded=true;record('화학분석기능사','모의 실기',total,`항목 ${items.map(i=>i[1]).join('/')}${ded.length?' · 감점 '+ded.map(d=>d[0]).join(','):''} · 미지 실제 ${E.C0.toFixed(2)} ppm · 답 ${a.ans}배(정답 ${f2(1000/E.C0)}배) · 소요 ${elapsed()}`)}
   const trueX=1000/E.C0;const c0me=parseFloat(a.c0);
   el.innerHTML=`<div class="card" style="text-align:center"><p class="eyebrow">모의 채점 결과 · 소요 ${elapsed()}</p><div class="score" style="margin-top:6px">${total}<span style="font-size:28px">점</span></div>
    <p style="margin-top:6px">${total>=60?'합격선(60점)을 넘었어요!':'아직 60점에 못 미쳐요. 아래 피드백을 확인하고 다시 도전!'}</p></div>
@@ -1437,7 +1458,121 @@ function s7(el){
     <div class="row" style="margin-top:14px"><button class="btn pri" id="again">새 미지시료로 다시 도전</button><button class="btn" data-go="hub">실험실로 돌아가기</button></div></div>`;
   $('#again',el).onclick=()=>{newExam();renderExam()};
 }
-render();
+/* ===== 학생 등록 · 기록 전송 · 교사용 결과 ===== */
+function getStudent(){return store.get('student',null)}
+const sLabel=s=>`${s.grade}학년 ${s.cls}반 ${s.no}번 ${s.name}`;
+function askStudent(then){
+  const s=getStudent()||{grade:'1',cls:'1',no:'',name:''};
+  const opt=(n,v)=>Array.from({length:n},(_,i)=>`<option ${String(i+1)===String(v)?'selected':''}>${i+1}</option>`).join('');
+  modal(`<h3>실험실 출입 명부</h3><p class="small muted" style="margin-top:4px">학년·반·번호와 이름을 적어 주세요. 활동 결과가 선생님께 전달됩니다.</p>
+   <form id="stuf" class="stack" style="margin-top:14px;gap:10px">
+    <div class="row" style="gap:8px">
+     <label class="stack" style="gap:2px;flex:1;min-width:80px"><span class="small">학년</span><select id="sg">${opt(3,s.grade)}</select></label>
+     <label class="stack" style="gap:2px;flex:1;min-width:80px"><span class="small">반</span><select id="sc">${opt(15,s.cls)}</select></label>
+     <label class="stack" style="gap:2px;flex:1;min-width:80px"><span class="small">번호</span><select id="sn">${opt(40,s.no||1)}</select></label>
+    </div>
+    <label class="stack" style="gap:2px"><span class="small">이름</span><input id="snm" value="${esc(s.name)}" maxlength="20" autocomplete="off" placeholder="홍길동"></label>
+    <p class="small muted">같은 컴퓨터를 여러 명이 쓸 때는 시작 전에 꼭 자기 이름으로 바꾸세요.</p>
+    <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-close>취소</button><button class="btn pri" type="submit">입장</button></div>
+   </form>`,(m,close)=>{
+    $('#snm',m).focus();
+    $('#stuf',m).addEventListener('submit',e=>{e.preventDefault();const name=$('#snm',m).value.trim().replace(/\s+/g,' ');
+      if(name.length<2){toast('이름을 2글자 이상 입력하세요');return}
+      const g=$('#sg',m).value,c=$('#sc',m).value,n=$('#sn',m).value;
+      const st={grade:g,cls:c,no:n,name,id:`${g}${String(c).padStart(2,'0')}${String(n).padStart(2,'0')}_${name}`};
+      store.set('student',st);close();updateWho();toast(`${sLabel(st)} 입장!`);then&&then()});
+  });
+}
+function updateWho(){
+  const w=$('#who');if(!w)return;const s=getStudent();const ob=store.get('outbox',[]).length;
+  w.innerHTML=s?`<span class="row" style="gap:6px"><span class="pill acc">${esc(sLabel(s))}</span>${SHEET_URL&&ob?`<span class="pill warn" title="전송 대기">대기 ${ob}</span>`:''}<button class="btn sm" id="whochg">변경</button></span>`:`<button class="btn sm pri" id="whochg">이름 등록</button>`;
+  $('#whochg').onclick=()=>askStudent(()=>render());
+}
+function record(kind,item,score,detail){
+  const s=getStudent();if(!s)return;
+  const r={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),clientTime:new Date().toISOString(),grade:s.grade,cls:s.cls,no:s.no,name:s.name,kind,item,score,detail:String(detail||'')};
+  const mine=store.get('myrecords',[]);mine.push(r);store.set('myrecords',mine.slice(-300));
+  if(SHEET_URL){const ob=store.get('outbox',[]);ob.push(r);store.set('outbox',ob);flushOutbox()}
+}
+let flushing=false;
+async function flushOutbox(){
+  if(!SHEET_URL||flushing)return;flushing=true;
+  let ob=store.get('outbox',[]);
+  while(ob.length){
+    try{await fetch(SHEET_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(ob[0])});ob=store.get('outbox',[]);ob.shift();store.set('outbox',ob)}
+    catch(e){break}
+  }
+  flushing=false;updateWho();
+}
+window.addEventListener('online',flushOutbox);
+function myRecordsHTML(){
+  const s=getStudent();if(!s)return `<section class="card" style="margin-top:22px"><h3>실험실 출입 명부</h3><p class="muted" style="margin-top:6px">입장하려면 먼저 이름을 등록하세요.</p><button class="btn pri" id="chgme" style="margin-top:10px">이름 등록</button></section>`;
+  const mine=store.get('myrecords',[]).slice().reverse().slice(0,8);
+  return `<section class="card" style="margin-top:22px"><div class="row" style="justify-content:space-between"><h3>${esc(sLabel(s))}의 활동 기록</h3><button class="btn sm" id="chgme">다른 학생으로 변경</button></div>
+   ${mine.length?`<div class="tw" style="margin-top:10px"><table class="table"><tr><th>시간</th><th>구분</th><th>항목</th><th>점수</th></tr>${mine.map(r=>`<tr><td class="mono small">${new Date(r.clientTime).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</td><td>${esc(r.kind)}</td><td>${esc(r.item)}</td><td class="mono">${r.score}</td></tr>`).join('')}</table></div>`:'<p class="muted" style="margin-top:6px">아직 기록이 없어요. 기초 이론 게임부터 시작해 보세요.</p>'}
+   <p class="small muted" style="margin-top:8px">${SHEET_URL?(store.get('outbox',[]).length?`선생님께 전송 대기 중 ${store.get('outbox',[]).length}건 (인터넷 연결 시 자동 전송)`:'모든 기록이 선생님께 전송되었어요.'):'이 페이지는 선생님 스프레드시트와 아직 연결되지 않아 기록이 이 브라우저에만 저장됩니다.'}</p></section>`;
+}
+
+/* 교사용 결과 */
+let TD={key:'',rows:null,f:{g:'',c:'',q:''},show:60};
+function renderTeacher(){
+  if(!SHEET_URL){
+    app.innerHTML=`<p class="eyebrow">교사용</p><h2 style="margin-top:6px">학생 결과 보기</h2>
+    <div class="card" style="margin-top:16px"><h3>스프레드시트가 아직 연결되지 않았어요</h3>
+    <p style="margin-top:8px">학생 결과를 모으려면 Google 스프레드시트에 Apps Script를 한 번 설치하고, 웹 앱 URL을 <code>index.html</code> 맨 위 <code>SHEET_URL</code>에 붙여 넣으세요. 자세한 순서는 함께 드린 README에 있습니다.</p>
+    <ol style="margin:10px 0 0;padding-left:20px"><li>Google 스프레드시트 새로 만들기 → 확장 프로그램 → Apps Script</li><li><code>apps-script.gs</code> 내용 붙여 넣기, 교사 비밀번호 바꾸기</li><li>배포 → 새 배포 → 웹 앱 (실행: 나, 액세스: 모든 사용자)</li><li>웹 앱 URL을 <code>SHEET_URL</code>에 넣고 GitHub에 다시 올리기</li></ol></div>`;return}
+  if(!TD.rows){
+    app.innerHTML=`<p class="eyebrow">교사용</p><h2 style="margin-top:6px">학생 결과 보기</h2>
+    <form class="card" id="tkf" style="margin-top:16px;max-width:460px"><label class="stack" style="gap:4px"><b>교사 비밀번호</b><input id="tk" type="password" autocomplete="current-password" value="${esc(TD.key)}"></label>
+    <div class="row" style="margin-top:12px;justify-content:flex-end"><button class="btn pri" type="submit">결과 불러오기</button></div><div id="tmsg" style="margin-top:8px"></div></form>`;
+    $('#tkf').addEventListener('submit',e=>{e.preventDefault();TD.key=$('#tk').value;loadTeacher()});return}
+  drawTeacher();
+}
+async function loadTeacher(){
+  const m=$('#tmsg');if(m)m.innerHTML='<div class="note">불러오는 중…</div>';
+  try{const res=await fetch(`${SHEET_URL}?key=${encodeURIComponent(TD.key)}&t=${Date.now()}`);const j=await res.json();
+    if(!j.ok){if(m)m.innerHTML=`<div class="note bad">${esc(j.error||'비밀번호를 확인하세요')}</div>`;TD.rows=null;return}
+    const seen=new Set();TD.rows=j.rows.filter(r=>{if(!r.id)return true;if(seen.has(r.id))return false;seen.add(r.id);return true});renderTeacher();
+  }catch(e){if(m)m.innerHTML=`<div class="note bad">불러오지 못했어요. 웹 앱 URL과 배포 설정(액세스: 모든 사용자)을 확인하세요.</div>`}
+}
+function drawTeacher(){
+  const f=TD.f;const all=TD.rows;
+  const rows=all.filter(r=>(!f.g||String(r.grade)===f.g)&&(!f.c||String(r.cls)===f.c)&&(!f.q||String(r.name).includes(f.q)));
+  const grades=[...new Set(all.map(r=>String(r.grade)))].sort(),classes=[...new Set(all.map(r=>String(r.cls)))].sort((a,b)=>a-b);
+  const by={};rows.forEach(r=>{const k=`${r.grade}-${r.cls}-${r.no}-${r.name}`;(by[k]=by[k]||{r,list:[]}).list.push(r)});
+  const sum=Object.values(by).map(({r,list})=>{
+    const best=lv=>{const s=list.filter(x=>x.kind==='기초 이론'&&String(x.item).startsWith(lv)).map(x=>+x.score);return s.length?Math.max(...s):null};
+    const prac=new Set(list.filter(x=>x.kind==='기초 실습').map(x=>x.item)).size;
+    const ex=list.filter(x=>x.kind==='화학분석기능사').map(x=>+x.score);
+    const last=list.map(x=>new Date(x.time||x.clientTime)).sort((a,b)=>b-a)[0];
+    return {grade:r.grade,cls:r.cls,no:r.no,name:r.name,t1:best('초보'),t2:best('중급'),t3:best('고급'),prac,exBest:ex.length?Math.max(...ex):null,exN:ex.length,last,n:list.length};
+  }).sort((a,b)=>a.grade-b.grade||a.cls-b.cls||a.no-b.no);
+  const cell=v=>v==null?'<span class="muted">—</span>':v;
+  const exCell=v=>v==null?'<span class="muted">—</span>':`<span class="pill ${v>=60?'ok':'bad'}">${v}</span>`;
+  const detail=rows.slice().sort((a,b)=>new Date(b.time||b.clientTime)-new Date(a.time||a.clientTime));
+  const dt=d=>new Date(d).toLocaleString('ko-KR',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  app.innerHTML=`<div class="row" style="justify-content:space-between;align-items:flex-end"><div><p class="eyebrow">교사용</p><h2 style="margin-top:6px">학생 결과</h2></div>
+   <div class="row"><span class="pill">학생 ${sum.length}명 · 기록 ${rows.length}건</span><button class="btn sm" id="trf">새로고침</button><button class="btn sm" id="tout">잠그기</button></div></div>
+   <div class="panel row" style="margin-top:14px">
+    <label class="row small" style="gap:6px">학년 <select id="fg"><option value="">전체</option>${grades.map(g=>`<option ${f.g===g?'selected':''}>${g}</option>`).join('')}</select></label>
+    <label class="row small" style="gap:6px">반 <select id="fc"><option value="">전체</option>${classes.map(c=>`<option ${f.c===c?'selected':''}>${c}</option>`).join('')}</select></label>
+    <label class="row small" style="gap:6px;flex:1;min-width:180px">이름 <input id="fq" value="${esc(f.q)}" placeholder="이름으로 찾기" style="flex:1"></label>
+   </div>
+   <div class="card" style="margin-top:14px"><h3>학생별 요약</h3><p class="small muted" style="margin-top:4px">기초 이론은 난이도별 최고 점수, 기초 실습은 완료한 미션 수(7개 중), 실기는 모의 채점 최고점(60점 이상 초록)입니다.</p>
+    <div class="tw" style="margin-top:10px"><table class="table"><tr><th>학년</th><th>반</th><th>번호</th><th>이름</th><th>이론 초보</th><th>이론 중급</th><th>이론 고급</th><th>실습 완료</th><th>실기 최고</th><th>실기 응시</th><th>마지막 활동</th></tr>
+    ${sum.map(s=>`<tr><td>${s.grade}</td><td>${s.cls}</td><td>${s.no}</td><td style="font-weight:600">${esc(s.name)}</td><td class="mono">${cell(s.t1)}</td><td class="mono">${cell(s.t2)}</td><td class="mono">${cell(s.t3)}</td><td class="mono">${s.prac}/7</td><td>${exCell(s.exBest)}</td><td class="mono">${s.exN}</td><td class="mono small">${s.last?dt(s.last):''}</td></tr>`).join('')||'<tr><td colspan="11" class="muted">조건에 맞는 기록이 없어요</td></tr>'}</table></div></div>
+   <div class="card" style="margin-top:14px"><h3>전체 기록 (최신순)</h3>
+    <div class="tw" style="margin-top:10px"><table class="table"><tr><th>시간</th><th>학번</th><th>이름</th><th>구분</th><th>항목</th><th>점수</th><th style="text-align:left">상세</th></tr>
+    ${detail.slice(0,TD.show).map(r=>`<tr><td class="mono small">${dt(r.time||r.clientTime)}</td><td class="mono">${r.grade}-${r.cls}-${r.no}</td><td>${esc(r.name)}</td><td>${esc(r.kind)}</td><td>${esc(r.item)}</td><td class="mono">${r.score}</td><td class="small" style="text-align:left">${esc(r.detail)}</td></tr>`).join('')}</table></div>
+    ${detail.length>TD.show?`<div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm" id="tmore">더 보기 (${detail.length-TD.show}건 남음)</button></div>`:''}
+    <p class="small muted" style="margin-top:8px">원본 데이터는 연결한 Google 스프레드시트의 「결과」 시트에 그대로 쌓입니다. 엑셀로 내려받거나 정렬·필터는 스프레드시트에서 하세요.</p></div>`;
+  $('#fg').onchange=e=>{f.g=e.target.value;drawTeacher()};$('#fc').onchange=e=>{f.c=e.target.value;drawTeacher()};
+  $('#fq').oninput=e=>{f.q=e.target.value.trim();clearTimeout(TD.qt);TD.qt=setTimeout(()=>{drawTeacher();const q=$('#fq');q.focus();q.setSelectionRange(q.value.length,q.value.length)},300)};
+  $('#trf').onclick=async()=>{toast('새로 불러오는 중…');await loadTeacher()};
+  $('#tout').onclick=()=>{TD.rows=null;TD.key='';renderTeacher()};
+  const mo=$('#tmore');if(mo)mo.onclick=()=>{TD.show+=100;drawTeacher()};
+}
+render();flushOutbox();
 
 </script>
 </body>
