@@ -181,7 +181,8 @@ main{padding-top:24px}
 .tool svg{width:70px;height:80px}
 .tool.sel{border-color:var(--accent);background:var(--accent-soft)}
 .bench{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
-@media (max-width:820px){.bench{grid-template-columns:1fr}}
+.bench.wide{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}.bench.wider{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+@media (max-width:820px){.bench,.bench.wide,.bench.wider{grid-template-columns:1fr}.zoom{transform:scale(.8);transform-origin:top left}}
 .stage{background:linear-gradient(var(--surface2),var(--surface2)) padding-box;border:1px solid var(--line);border-radius:14px;display:flex;justify-content:center;align-items:flex-end;gap:20px;padding:14px;min-height:280px;position:relative;flex-wrap:wrap}
 .stage svg{max-width:100%}
 .holdbtn{user-select:none;-webkit-user-select:none;touch-action:none}
@@ -353,19 +354,17 @@ window.addEventListener('hashchange',render);
 /* 공통 SVG */
 function flaskSVG(o={}){
   const {w=120,h=190,level=0,color='var(--liquid)',alpha=.85,label='',vol='100 mL',id='fk'+Math.random().toString(36).slice(2,7),film=false}=o;
-  const markY=52,neckTop=16,bulbTop=96,bottom=176;
-  let y;const L=Math.max(0,level);
-  if(L<=.9)y=bottom-(L/.9)*(bottom-bulbTop);else y=bulbTop-(L-.9)/.1*(bulbTop-markY);
-  y=Math.max(neckTop,y);
-  const path=`M52 ${neckTop} V100 C22 110 14 130 14 146 C14 166 32 180 60 180 C88 180 106 166 106 146 C106 130 98 110 68 100 V${neckTop}Z`;
+  const markY=50,neckTop=14,join=98,bottom=178;
+  const L=Math.max(0,level);let y=L<=.93?bottom-(L/.93)*(bottom-join):join-(L-.93)/.07*(join-markY);y=Math.max(neckTop,y);
+  const path=`M55 ${neckTop} V${join} C55 112 28 124 21 150 C17 166 24 178 36 178 H84 C96 178 103 166 99 150 C92 124 65 112 65 ${join} V${neckTop}Z`;
   return `<svg viewBox="0 0 120 190" width="${w}" height="${h}" aria-label="메스플라스크 ${vol}">
   <defs><clipPath id="${id}"><path d="${path}"/></clipPath></defs>
   <rect x="0" y="${y}" width="120" height="${190-y}" fill="${color}" opacity="${alpha}" clip-path="url(#${id})"/>
-  <path d="${path}" fill="none" stroke="var(--ink)" stroke-width="2"/>
-  <rect x="49" y="8" width="22" height="9" rx="2" fill="${film?'var(--glass-soft)':'none'}" stroke="var(--ink)" stroke-width="1.5"/>
-  <line x1="48" x2="72" y1="${markY}" y2="${markY}" stroke="var(--ink)" stroke-width="2"/>
-  <text x="60" y="150" text-anchor="middle" font-size="11" font-family="IBM Plex Mono,monospace" fill="var(--ink)">${vol}</text>
-  ${label?`<text x="60" y="164" text-anchor="middle" font-size="10" font-family="IBM Plex Sans KR,sans-serif" fill="var(--ink)">${esc(label)}</text>`:''}
+  <path d="${path}" fill="rgba(210,235,240,.15)" stroke="var(--ink)" stroke-width="2"/>
+  <rect x="51" y="6" width="18" height="10" rx="2" fill="${film?'var(--glass-soft)':'rgba(230,240,240,.9)'}" stroke="var(--ink)" stroke-width="1.5"/>
+  <line x1="52" x2="68" y1="${markY}" y2="${markY}" stroke="var(--ink)" stroke-width="1.6"/>
+  <text x="60" y="160" text-anchor="middle" font-size="12" font-weight="700" font-family="IBM Plex Mono,monospace" fill="#2E6DB4">${vol}</text>
+  ${label?`<text x="60" y="173" text-anchor="middle" font-size="9.5" font-family="IBM Plex Sans KR,sans-serif" fill="var(--ink)">${esc(label)}</text>`:''}
   </svg>`;
 }
 function beakerSVG(color='var(--liquid)',lv=.5,lab=''){return `<svg viewBox="0 0 80 90" width="70" height="80"><path d="M14 10 V78 a6 6 0 0 0 6 6 H60 a6 6 0 0 0 6 -6 V10" fill="none" stroke="var(--ink)" stroke-width="2"/><rect x="15" y="${84-70*lv}" width="50" height="${70*lv-1}" fill="${color}" opacity=".8"/><path d="M10 10h60" stroke="var(--ink)" stroke-width="2"/>${lab?`<text x="40" y="50" text-anchor="middle" font-size="10" fill="var(--ink)">${lab}</text>`:''}</svg>`}
@@ -724,128 +723,244 @@ function holdButton(btn,onTick,ms=50){
   btn.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&!t){start(e)}});btn.addEventListener('keyup',stop);
   onLeave(stop);return stop;
 }
-/* 피펫 + 안전 필러 */
+/* 안전 피펫 필러 (실물형: 고무구 위 A 밸브, 아래 긴 몸통에 S 밸브와 E 곁가지) */
+function fillerSVG(cx,top,o={}){
+  const {squeezed=false,active=''}=o;
+  const R=squeezed?32:40, by=top+40+R;
+  const red='#E8473F',dk='#B12A23',hi='#F7766E';
+  const lab=(x,y,t)=>`<g><circle cx="${x}" cy="${y}" r="8.5" fill="${active===t?'#FFB414':'#fff'}" stroke="${dk}" stroke-width="1.4"/><text x="${x}" y="${y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="${dk}" font-family="IBM Plex Sans KR,sans-serif">${t}</text></g>`;
+  const st=by+R-4;
+  return `<g>
+   <rect x="${cx-9}" y="${top}" width="18" height="8" rx="3" fill="${red}" stroke="${dk}" stroke-width="1.2"/>
+   <rect x="${cx-7}" y="${top+6}" width="14" height="${by-R-top}" rx="2" fill="${red}" stroke="${dk}" stroke-width="1.2"/>
+   <circle cx="${cx}" cy="${top+20}" r="5.5" fill="none" stroke="${dk}" stroke-width="1" opacity=".6"/>
+   ${lab(cx+22,top+20,'A')}
+   <circle cx="${cx}" cy="${by}" r="${R}" fill="${red}" stroke="${dk}" stroke-width="1.5"/>
+   <ellipse cx="${cx-R*.38}" cy="${by-R*.42}" rx="${R*.32}" ry="${R*.22}" fill="${hi}" opacity=".55"/>
+   <rect x="${cx-11}" y="${st}" width="22" height="18" rx="3" fill="${red}" stroke="${dk}" stroke-width="1.2"/>
+   <rect x="${cx-7}" y="${st+17}" width="14" height="92" fill="${red}" stroke="${dk}" stroke-width="1.2"/>
+   <ellipse cx="${cx+7}" cy="${st+38}" rx="3.5" ry="7" fill="${dk}" opacity=".35"/>
+   ${lab(cx+24,st+38,'S')}
+   <rect x="${cx-34}" y="${st+64}" width="28" height="12" fill="${red}" stroke="${dk}" stroke-width="1.2"/>
+   <rect x="${cx-38}" y="${st+61}" width="7" height="18" rx="2" fill="${red}" stroke="${dk}" stroke-width="1.2"/>
+   ${lab(cx-22,st+48,'E')}
+   <rect x="${cx-9}" y="${st+104}" width="18" height="8" rx="2" fill="${red}" stroke="${dk}" stroke-width="1.2"/>
+  </g>`;
+}
+/* 피펫 형상: 홀피펫(부피) 또는 눈금피펫(직관) */
+function pipetteGeom(vol,o2={}){
+  const X=110;
+  if(vol)return {X,mark:300,top:228,max:1.045,
+    outline:`M${X-6} 228 V408 C${X-6} 422 ${X-28} 428 ${X-28} 500 C${X-28} 568 ${X-5} 574 ${X-5} 588 V708 L${X-1.5} 744 H${X+1.5} L${X+5} 708 V588 C${X+5} 574 ${X+28} 568 ${X+28} 500 C${X+28} 428 ${X+6} 422 ${X+6} 408 V228 Z`,
+    yOf:L=>L<=.06?744-(L/.06)*156:L<=.92?588-((L-.06)/.86)*180:408-((L-.92)/.08)*108,
+    halfW:y=>y<408?6:y>588?5:22};
+  const cap=o2.cap||1,V=o2.V||cap,z=268,full=688,px=(full-z)/cap;
+  const mark=full-V*px;
+  return {X,mark,top:228,max:(full-234)/(V*px),cap,V,z,full,px,
+    outline:`M${X-5} 228 V${full+10} L${X-1.6} 744 H${X+1.6} L${X+5} ${full+10} V228 Z`,
+    yOf:L=>L<=0?744:Math.min(744,full-L*V*px+ (L*V*px<1?0:0)),halfW:()=>5};
+}
+function pipetteDrawing(G,S,o){
+  const {color,target,unit,vol,clipId}=o;
+  const y=G.yOf(Math.max(0,Math.min(S.level,G.max))),hw=G.halfW(y),dp=Math.min(3,hw*.45);
+  let ticks='';
+  if(!vol){const n=50;for(let i=0;i<=n;i++){const v=G.cap*i/n,ty=G.z+v*G.px;const maj=i%5===0;ticks+=`<line x1="${G.X-5}" x2="${G.X-5+(maj?9:5)}" y1="${ty}" y2="${ty}" stroke="#9A6A00" stroke-width="${maj?.9:.6}"/>`;if(maj)ticks+=`<text x="${G.X-9}" y="${ty+3}" text-anchor="end" font-size="7.5" fill="#9A6A00" font-family="IBM Plex Mono,monospace">${+(v).toFixed(2)}</text>`}
+    ticks+=`<rect x="${G.X-5}" y="238" width="10" height="16" fill="#F08A24" opacity=".9"/><text x="${G.X}" y="234" text-anchor="middle" font-size="7.5" fill="#9A6A00" font-family="IBM Plex Mono,monospace">${G.cap}</text>`}
+  return `<defs><clipPath id="${clipId}"><path d="${G.outline}"/></clipPath></defs>
+   ${S.level>0?`<g clip-path="url(#${clipId})"><path d="M${G.X-40} ${y-dp} H${G.X-hw} Q${G.X} ${y+dp} ${G.X+hw} ${y-dp} H${G.X+40} V760 H${G.X-40}Z" fill="${color}" opacity=".82"/></g>`:''}
+   <path d="${G.outline}" fill="rgba(210,235,240,.25)" stroke="var(--ink)" stroke-width="1.4"/>
+   <path d="M${G.X+(vol?16:2)} ${vol?440:250} V${vol?560:690}" stroke="#fff" stroke-width="2.5" opacity=".55" stroke-linecap="round"/>
+   <line x1="${G.X-14}" x2="${G.X+14}" y1="${G.mark}" y2="${G.mark}" stroke="${vol?'var(--ink)':'var(--accent)'}" stroke-width="${vol?1.6:1}"/>
+   ${ticks}
+   <text x="${G.X+18}" y="${G.mark+4}" font-size="10" fill="var(--accent)" font-family="IBM Plex Mono,monospace">${vol?target+' '+unit:'◀ '+(+(G.cap-G.V).toFixed(2))+' 눈금'}</text>
+   ${vol?`<text x="${G.X}" y="505" text-anchor="middle" font-size="9.5" fill="var(--ink)" font-family="IBM Plex Mono,monospace">${target} mL</text><text x="${G.X}" y="518" text-anchor="middle" font-size="8" fill="var(--ink)" font-family="IBM Plex Mono,monospace">20℃ TD</text>`:''}`;
+}
 function pipetteGame(el,o){
-  const {target=1,unit='mL',kind='눈금피펫',color='var(--liquid)',onDone}=o;
-  const S={phase:'ready',level:0,dipped:false,squeezed:false,transferLevel:null,wasOver:false};
-  el.innerHTML=`<div class="bench">
-   <div class="stage" id="pstage" style="align-items:center"></div>
+  const {target=1,unit='mL',kind='눈금 피펫',color='var(--liquid)',onDone}=o;
+  const vol=/홀/.test(kind);const capM=String(kind).match(/([\d.]+)\s*mL/);const G=pipetteGeom(vol,{cap:o.cap||(capM?+capM[1]:Math.max(1,Math.ceil(+target))),V:+target});
+  const S={phase:'ready',level:0,dipped:false,squeezed:false,transferLevel:null,wasOver:false,active:''};
+  el.innerHTML=`<div class="bench wide">
+   <div class="stage" id="pstage" style="align-items:flex-start;justify-content:center;gap:12px"></div>
    <div class="stack">
-     <div class="panel"><b>${kind} · ${target} ${unit} 취하기</b><p class="small muted" style="margin-top:4px">안전 피펫 필러: <b>A</b>(Air) 공기 빼기 · <b>S</b>(Suction) 빨아올리기 · <b>E</b>(Empty) 내보내기</p></div>
+     <div class="panel"><b>${kind} · ${target} ${unit} 취하기</b>${vol?'':`<p class="small" style="margin-top:4px">눈금 피펫은 위가 0, 아래로 갈수록 숫자가 커져요. <b>${+(G.cap-G.V).toFixed(2)} 눈금</b>까지 채운 뒤 끝까지 내보내면 ${target} mL가 옮겨집니다.</p>`}<p class="small muted" style="margin-top:4px">안전 피펫 필러: 고무구 위 <b>A</b>(Air) 공기 빼기 · 아래 몸통 <b>S</b>(Suction) 빨아올리기 · 곁가지 <b>E</b>(Empty) 내보내기</p></div>
      <div class="steps" id="psteps"></div>
-     <div class="row">
-       <button class="btn" id="pA">A 누르기</button>
-       <button class="btn" id="pDip">용액에 깊숙이 넣기</button>
-     </div>
-     <div class="row">
-       <button class="btn holdbtn" id="pS">S 누르고 있기 ▲</button>
-       <button class="btn holdbtn" id="pE">E 누르고 있기 ▼</button>
-     </div>
+     <div class="row"><button class="btn" id="pA">A 누르기</button><button class="btn" id="pDip">용액에 깊숙이 넣기</button></div>
+     <div class="row"><button class="btn holdbtn" id="pS">S 누르고 있기 ▲</button><button class="btn holdbtn" id="pE">E 누르고 있기 ▼</button></div>
      <div class="row"><button class="btn glass" id="pMove" disabled>메스플라스크로 옮기기</button><button class="btn sm" id="pReset">처음부터</button></div>
      <div id="pmsg"></div>
    </div></div>`;
   const steps=['A를 눌러 필러 속 공기 빼기','피펫 끝을 용액에 깊숙이 넣기','S로 표선보다 약간 위까지 빨아올리기','E를 살짝 눌러 메니스커스 아랫면을 표선에 맞추기','메스플라스크로 옮기기','E로 끝까지 내보내기'];
   const stepIdx=()=>S.phase==='ready'?(S.squeezed?1:0):S.phase==='dip'?2:S.phase==='fill'?(S.wasOver?3:2):S.phase==='move'?5:S.phase==='done'?6:4;
+  const uid='pp'+Math.random().toString(36).slice(2,7);
   function draw(){
-    const top=40,mark=90,bottom=330,span=bottom-mark;
-    const y=bottom-S.level*span;const inFlask=S.phase==='move'||S.phase==='done';
-    const zoomOff=(S.level-1)*span*9;
+    const inFlask=S.phase==='move'||S.phase==='done';
+    const pos=S.phase==='move'||S.phase==='done'?[-120,14]:S.dipped?[170,92]:[60,-6];
+    if(!S.shown)S.shown=pos;
+    const fl=S.transferLevel?Math.max(0,(S.transferLevel-(S.phase==='done'?0:S.level))/1.2):0;
+    const bl=Math.round(770+Math.min(S.level,1.1)*10);
+    const body=pipetteDrawing(G,S,{color,target,unit,vol,clipId:uid+'a'});
+    const zbody=pipetteDrawing(G,S,{color,target,unit,vol,clipId:uid+'b'});
     $('#pstage',el).innerHTML=`
-     <svg viewBox="0 0 120 380" width="110" height="340" aria-label="피펫">
-      <rect x="40" y="0" width="40" height="36" rx="12" fill="${S.squeezed?'#b33':'#d44'}" opacity=".85"/>
-      <text x="60" y="22" text-anchor="middle" font-size="11" fill="#fff" font-family="IBM Plex Mono">A·S·E</text>
-      <rect x="54" y="${top}" width="12" height="${bottom-top}" fill="none" stroke="var(--ink)" stroke-width="1.6"/>
-      <path d="M54 ${bottom} L58 ${bottom+30} H62 L66 ${bottom}" fill="none" stroke="var(--ink)" stroke-width="1.6"/>
-      ${S.level>0?`<rect x="55" y="${Math.max(top,y)}" width="10" height="${bottom-Math.max(top,y)}" fill="${color}" opacity=".85"/><path d="M58 ${bottom} L60 ${bottom+28} L62 ${bottom}Z" fill="${color}" opacity=".85"/>`:''}
-      <line x1="46" x2="74" y1="${mark}" y2="${mark}" stroke="var(--ink)" stroke-width="2"/>
-      <text x="80" y="${mark+4}" font-size="11" fill="var(--ink)" font-family="IBM Plex Mono">${target} ${unit}</text>
-      ${S.dipped&&!inFlask?`<rect x="20" y="${bottom-10}" width="80" height="50" fill="${color}" opacity=".35"/><text x="60" y="${bottom+36}" text-anchor="middle" font-size="10" fill="var(--ink)">비커</text>`:''}
-      ${inFlask?`<path d="M50 ${bottom+5} h20 v10 c10 4 18 10 18 22 h-56 c0 -12 8 -18 18 -22z" fill="none" stroke="var(--glass)" stroke-width="1.5"/><text x="60" y="${bottom+48}" text-anchor="middle" font-size="10" fill="var(--glass)">플라스크</text>`:''}
+     <svg viewBox="-90 0 450 910" style="height:min(640px,74vh);width:auto;max-width:100%" aria-label="${kind}와 안전 피펫 필러, 시료 비커, 메스플라스크">
+      <line x1="-90" x2="360" y1="889" y2="889" stroke="var(--line)" stroke-width="3"/>
+      <g aria-label="메스플라스크">
+       ${fl>0?`<clipPath id="${uid}f"><path d="M-22 700 V808 C-22 818 -52 826 -52 856 C-52 878 -38 888 -10 888 C18 888 32 878 32 856 C32 826 2 818 2 808 V700Z"/></clipPath><rect x="-60" y="${888-fl*58}" width="100" height="${fl*58+2}" fill="${color}" opacity=".7" clip-path="url(#${uid}f)"/>`:''}
+       <path d="M-22 700 V808 C-22 818 -52 826 -52 856 C-52 878 -38 888 -10 888 C18 888 32 878 32 856 C32 826 2 818 2 808 V700" fill="rgba(210,235,240,.2)" stroke="var(--ink)" stroke-width="1.5"/>
+       <line x1="-22" x2="2" y1="730" y2="730" stroke="var(--ink)" stroke-width="1"/>
+       <text x="-10" y="872" text-anchor="middle" font-size="10" font-weight="700" fill="#2E6DB4" font-family="IBM Plex Sans KR,sans-serif">100 mL</text>
+       <text x="-10" y="905" text-anchor="middle" font-size="11" fill="var(--muted)">메스플라스크</text>
+      </g>
+      <g aria-label="시료 비커"><path d="M222 ${bl} H338 V884 a4 4 0 0 1 -4 4 H226 a4 4 0 0 1 -4 -4Z" fill="${color}" opacity=".45"/></g>
+      <g id="${uid}g" transform="translate(${S.shown[0]} ${S.shown[1]})">
+       ${fillerSVG(G.X,8,{squeezed:S.squeezed&&S.level===0,active:S.active})}
+       ${body}
+      </g>
+      <path d="M216 716 h6 V884 a4 4 0 0 0 4 4 H334 a4 4 0 0 0 4 -4 V716 h6" fill="none" stroke="var(--ink)" stroke-width="2"/>
+      ${[0,1,2,3].map(i=>`<line x1="322" x2="338" y1="${870-i*36}" y2="${870-i*36}" stroke="var(--ink)" stroke-width=".8"/>`).join('')}
+      <text x="280" y="905" text-anchor="middle" font-size="11" fill="var(--muted)">${o.srcLabel||'시료 비커'}</text>
      </svg>
-     <div class="stack" style="align-items:center;gap:6px">
-      <div class="zoom" aria-label="표선 확대">
-       <svg viewBox="0 0 150 150" width="150" height="150">
-        <rect x="45" y="0" width="60" height="150" fill="var(--surface2)"/>
-        ${S.level>0?`<path d="M46 ${75-zoomOff} Q75 ${75-zoomOff+14} 104 ${75-zoomOff} V150 H46Z" fill="${color}" opacity=".7"/>`:''}
-        <line x1="45" y1="0" x2="45" y2="150" stroke="var(--ink)" stroke-width="2"/><line x1="105" y1="0" x2="105" y2="150" stroke="var(--ink)" stroke-width="2"/>
-        <line x1="30" x2="120" y1="${75+7}" y2="${75+7}" stroke="var(--accent)" stroke-width="2.5"/>
-        <line x1="0" x2="150" y1="${75+7}" y2="${75+7}" stroke="var(--accent)" stroke-dasharray="3 4" opacity=".4"/>
-       </svg></div>
-      <span class="small muted">표선 확대 (눈높이)</span>
+     <div class="stack" style="position:absolute;top:12px;left:12px;align-items:center;gap:4px;background:color-mix(in srgb,var(--surface2) 85%,transparent);border-radius:12px;padding:6px">
+      <div class="zoom" style="width:200px;height:200px" aria-label="표선 확대">
+       <svg viewBox="${G.X-34} ${G.mark-34} 68 68" width="200" height="200">${zbody}
+        <line x1="${G.X-40}" x2="${G.X+40}" y1="${G.mark}" y2="${G.mark}" stroke="var(--accent)" stroke-width=".6" stroke-dasharray="1.5 1.5" opacity=".7"/></svg></div>
+      <span class="small muted">표선 확대 (눈높이) — 오목한 아랫면을 표선에!</span>
       <span class="mono small">${S.level>0?`표선 대비 ${(S.level*100).toFixed(1)} %`:'비어 있음'}</span>
      </div>`;
+    if(S.shown[0]!==pos[0]||S.shown[1]!==pos[1]){const from=S.shown.slice();S.shown=pos;const t0=performance.now();cancelAnimationFrame(S.raf);
+      const step=now=>{const g=$('#'+uid+'g',el);if(!g)return;let t=Math.min(1,(now-t0)/900);t=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;g.setAttribute('transform',`translate(${from[0]+(pos[0]-from[0])*t} ${from[1]+(pos[1]-from[1])*t})`);if(t<1)S.raf=requestAnimationFrame(step)};S.raf=requestAnimationFrame(step)}
     $('#psteps',el).innerHTML=steps.map((s,i)=>`<div class="stp ${i<stepIdx()?'done':i===stepIdx()?'cur':''}">${s}</div>`).join('');
     $('#pMove',el).disabled=!(S.phase==='fill'&&S.level>0.5);
   }
   const msg=(t,c='note')=>{$('#pmsg',el).innerHTML=`<div class="${c}">${t}</div>`};
-  $('#pA',el).onclick=()=>{if(S.phase!=='ready'){msg('지금은 A를 누를 단계가 아니에요.','note warn');return}S.squeezed=true;msg('필러의 공기가 빠졌어요. 이제 피펫 끝을 용액에 깊숙이 넣으세요.');draw()};
+  const flash=k=>{S.active=k;draw();clearTimeout(S.ft);S.ft=setTimeout(()=>{S.active='';draw()},250)};
+  $('#pA',el).onclick=()=>{if(S.phase!=='ready'){msg('지금은 A를 누를 단계가 아니에요.','note warn');return}S.squeezed=true;msg('A 밸브를 누른 채 고무구를 쥐어 공기를 뺐어요. 이제 피펫 끝을 용액에 깊숙이 넣으세요.');flash('A')};
   $('#pDip',el).onclick=()=>{if(S.phase==='move'||S.phase==='done')return;S.dipped=true;if(S.phase==='ready')S.phase='dip';msg('피펫 끝이 용액 속에 있어요. S를 누르고 있으면 올라갑니다.');draw()};
   holdButton($('#pS',el),()=>{
     if(!S.squeezed){msg('먼저 A를 눌러 필러 속 공기를 빼야 S가 작동해요.','note warn');return}
     if(!S.dipped){msg('피펫 끝이 공기 중에 있어요. 공기 방울만 들어갑니다. 먼저 용액에 넣으세요.','note warn');return}
     if(S.phase==='move'||S.phase==='done')return;
-    S.phase='fill';S.level+=0.012;if(S.level>1.005)S.wasOver=true;
-    if(S.level>1.28){S.level=0;S.phase='ready';S.squeezed=false;S.dipped=false;msg('용액이 필러까지 빨려 올라갔어요! 필러가 오염되면 안 돼요. 처음부터 다시 하세요.','note bad')}
-    draw()});
+    S.active='S';S.phase='fill';S.level+=S.level<.9?0.02:0.004;if(S.level>1.004)S.wasOver=true;
+    if(S.level>G.max){S.level=0;S.phase='ready';S.squeezed=false;S.dipped=false;S.active='';msg('용액이 필러까지 빨려 올라갔어요! 필러가 오염되면 안 돼요. 처음부터 다시 하세요.','note bad')}
+    draw()},60);
   holdButton($('#pE',el),()=>{
-    if(S.phase==='fill'){S.level=Math.max(0,S.level-0.0016);draw();return}
-    if(S.phase==='move'){S.level=Math.max(0,S.level-0.02);if(S.level<=0){S.phase='done';const acc=S.transferLevel;const err=(acc-1)*100;
+    if(S.phase==='fill'){S.active='E';S.level=Math.max(0,S.level-(vol?0.0007:0.0012));draw();return}
+    if(S.phase==='move'){S.active='E';S.level=Math.max(0,S.level-0.025);if(S.level<=0){S.phase='done';S.active='';const acc=S.transferLevel;const err=(acc-1)*100;
       const grade=Math.abs(err)<=0.5?'ok':Math.abs(err)<=1.5?'warn':'bad';
       msg(`옮긴 부피 ≈ <b class="mono">${(target*acc).toFixed(3)} ${unit}</b> (오차 ${err>=0?'+':''}${err.toFixed(1)} %) — ${grade==='ok'?'표선을 정확히 맞췄어요!':grade==='warn'?'조금 어긋났어요. 확대창을 보며 E를 더 살살 눌러 보세요.':'표선이 많이 어긋났어요. 농도 오차가 커집니다.'}`,'note '+grade);
       onDone&&onDone(acc)}draw();return}
     if(S.phase==='ready'||S.phase==='dip')msg('아직 피펫에 용액이 없어요.','note warn');
-  },50);
-  $('#pMove',el).onclick=()=>{if(Math.abs(S.level-1)>0.03)msg('표선이 맞지 않은 상태로 옮겼어요. 실제 시험이라면 다시 맞추는 게 좋아요.','note warn');else msg('좋아요. 이제 E를 눌러 플라스크에 내보내세요.');S.transferLevel=S.level;S.phase='move';S.dipped=false;draw()};
-  $('#pReset',el).onclick=()=>{Object.assign(S,{phase:'ready',level:0,dipped:false,squeezed:false,transferLevel:null,wasOver:false});$('#pmsg',el).innerHTML='';draw()};
+  },60);
+  ['pS','pE'].forEach(id=>['pointerup','pointerleave'].forEach(ev=>$('#'+id,el).addEventListener(ev,()=>{if(S.active){S.active='';draw()}})));
+  $('#pMove',el).onclick=()=>{if(Math.abs(S.level-1)>0.01)msg('표선이 맞지 않은 상태로 옮겼어요. 실제 시험이라면 다시 맞추는 게 좋아요.','note warn');else msg('좋아요. 이제 E를 눌러 플라스크에 내보내세요.');S.transferLevel=S.level;S.phase='move';S.dipped=false;draw()};
+  $('#pReset',el).onclick=()=>{Object.assign(S,{phase:'ready',level:0,dipped:false,squeezed:false,transferLevel:null,wasOver:false,active:''});$('#pmsg',el).innerHTML='';draw()};
   draw();
 }
-/* 메스플라스크 표선 맞추기 + 섞기 */
+/* 큰 메스플라스크 */
+const FK={neckL:109,neckR:131,top:14,mark:84,join:222,bottom:392};
+FK.outline=`M${FK.neckL} ${FK.top} V${FK.join} C${FK.neckL} 248 64 266 52 318 C44 354 54 390 82 392 H158 C186 390 196 354 188 318 C176 266 ${FK.neckR} 248 ${FK.neckR} ${FK.join} V${FK.top} Z`;
+FK.yOf=L=>L<=.93?FK.bottom-(L/.93)*(FK.bottom-FK.join):FK.join-((L-.93)/.07)*(FK.join-FK.mark);
+FK.max=1+(FK.mark-FK.top-6)/((FK.join-FK.mark)/.07);
+function bigFlask(S,o){
+  const {color,mixed=1,clipId,film=false}=o;
+  const y=FK.yOf(Math.min(S.level,FK.max+.01));
+  return `<defs><clipPath id="${clipId}"><path d="${FK.outline}"/></clipPath>
+     <linearGradient id="${clipId}g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="${(1-mixed)*.75}"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
+   ${S.level>0?`<g clip-path="url(#${clipId})"><path d="M30 ${y-3} H${FK.neckL} Q120 ${y+3} ${FK.neckR} ${y-3} H210 V400 H30Z" fill="${color}" opacity=".85"/><rect x="0" y="${Math.max(y-4,FK.top)}" width="240" height="400" fill="url(#${clipId}g)"/></g>`:''}
+   <path d="${FK.outline}" fill="rgba(210,235,240,.16)" stroke="var(--ink)" stroke-width="1.8"/>
+   <path d="M${FK.neckR-4} 30 V200" stroke="#fff" stroke-width="2.5" opacity=".5" stroke-linecap="round"/>
+   <path d="M70 360 C62 330 70 300 90 280" stroke="#fff" stroke-width="5" fill="none" opacity=".45" stroke-linecap="round"/>
+   <line x1="${FK.neckL}" x2="${FK.neckR}" y1="${FK.mark}" y2="${FK.mark}" stroke="var(--ink)" stroke-width="1.3"/>
+   <path d="M${FK.neckL-3} ${FK.top+2} h${FK.neckR-FK.neckL+6} v-3 h-${FK.neckR-FK.neckL+6}z" fill="var(--ink)" opacity=".5"/>
+   ${film?`<path d="M${FK.neckL-5} ${FK.top-10} h${FK.neckR-FK.neckL+10} v22 l-4 6 h-${FK.neckR-FK.neckL+2} l-4 -6z" fill="rgba(225,240,245,.85)" stroke="var(--glass)" stroke-width="1.2"/><text x="120" y="${FK.top+4}" text-anchor="middle" font-size="6" fill="var(--glass)">parafilm</text>`:`<rect x="${FK.neckL-5}" y="${FK.top-12}" width="${FK.neckR-FK.neckL+10}" height="0" fill="none"/>`}
+   <text x="120" y="356" text-anchor="middle" font-size="30" font-weight="700" fill="#2E6DB4" font-family="IBM Plex Sans KR,Arial,sans-serif" letter-spacing="-1">100 mL</text>
+   <text x="120" y="372" text-anchor="middle" font-size="8" fill="#2E6DB4" font-family="IBM Plex Mono,monospace">A · 20 ℃ · ±0.10 mL · TC</text>`;
+}
 function flaskGame(el,o){
   const {start=0.02,color=l=>'var(--liquid)',label='',onDone,onSpill}=o;
-  const S={level:start,sealed:false,inverts:0,phase:'fill'};
-  el.innerHTML=`<div class="bench">
-    <div class="stage" id="fstage" style="align-items:center"></div>
+  const S={level:start,sealed:false,inverts:0,phase:'fill',half:false};
+  el.innerHTML=`<div class="bench wide">
+    <div class="stage" id="fstage" style="align-items:center;justify-content:center;gap:14px;min-height:460px"></div>
     <div class="stack">
-      <div class="panel"><b>100 mL 메스플라스크 ${label}</b><p class="small muted" style="margin-top:4px">세척병으로 증류수를 채우다가 표선 근처에서는 한 방울씩! 메니스커스 아랫면이 표선에 닿으면 완성입니다.</p></div>
+      <div class="panel"><b>100 mL 메스플라스크 ${label}</b><p class="small muted" style="margin-top:4px">세척병으로 증류수를 채우다가 표선 근처에서는 한 방울씩 넣으세요. 메니스커스(오목한 면)의 <b>가장 아랫부분</b>이 표선에 닿으면 [표선 확인]을 누릅니다.</p></div>
       <div class="steps" id="fsteps"></div>
       <div class="row"><button class="btn holdbtn" id="fPour">세척병으로 붓기 (누르고 있기)</button><button class="btn" id="fDrop">한 방울</button></div>
-      <div class="row"><button class="btn" id="fSeal" disabled>파라필름 밀봉</button><button class="btn" id="fInv" disabled>뒤집어 섞기 (0/10)</button></div>
+      <div class="row"><button class="btn pri" id="fMark">표선 확인</button><button class="btn" id="fSeal" disabled>파라필름 밀봉</button></div>
+      <div class="row"><button class="btn holdbtn" id="fInv" disabled>누르고 있으면 뒤집어 섞기 (0회)</button></div>
       <div class="row"><button class="btn pri" id="fOk" disabled>완료</button></div>
       <div id="fmsg"></div>
     </div></div>`;
-  const steps=['표선 아래까지 증류수 붓기','표선 근처는 한 방울씩 맞추기','파라필름으로 입구 밀봉','천천히 뒤집어 10회 섞기'];
+  const steps=['표선 아래까지 증류수 붓기','표선 근처는 한 방울씩 — 오목한 아랫면을 표선에','파라필름으로 입구 밀봉','버튼을 누르고 있는 동안 계속 뒤집어 섞기 (10회 이상)'];
   const idx=()=>S.phase==='fill'?(S.level<.97?0:1):S.phase==='sealed'?(S.inverts<10?3:4):S.phase==='marked'?2:(S.phase==='over'||S.phase==='spill')?1:4;
+  const uid='fk'+Math.random().toString(36).slice(2,7);
   let rot=0;
   function draw(){
-    const zoomOff=(S.level-1)*6000;const mixed=S.inverts>=10;
-    const c=color(S.level);
-    $('#fstage',el).innerHTML=`<div style="transform:rotate(${rot}deg);transition:transform .35s">${flaskSVG({w:150,h:238,level:S.level,color:c,alpha:mixed||S.phase==='fill'?.85:.7,film:S.sealed,vol:'100 mL'})}</div>
-      <div class="stack" style="align-items:center;gap:6px"><div class="zoom"><svg viewBox="0 0 150 150" width="150" height="150">
-        <rect x="50" y="0" width="50" height="150" fill="var(--surface2)"/>
-        <path d="M51 ${75-zoomOff} Q75 ${75-zoomOff+12} 99 ${75-zoomOff} V150 H51Z" fill="${c}" opacity=".6"/>
-        <line x1="50" y1="0" x2="50" y2="150" stroke="var(--ink)" stroke-width="2"/><line x1="100" y1="0" x2="100" y2="150" stroke="var(--ink)" stroke-width="2"/>
-        <line x1="36" x2="114" y1="81" y2="81" stroke="var(--accent)" stroke-width="2.5"/></svg></div>
-        <span class="small muted">표선 확대</span><span class="mono small">${(S.level*100).toFixed(2)} mL</span></div>`;
+    const c=color(S.level);const mixed=S.phase==='sealed'||S.phase==='done'?Math.min(1,S.inverts/10):(S.level<.3?1:.15);
+    const d=(S.level-1)*100;
+    $('#fstage',el).innerHTML=`<div style="transform:rotate(${rot}deg);transition:transform .3s ease-in-out;transform-origin:50% 55%"><svg viewBox="30 0 180 400" style="height:min(460px,64vh);width:auto;max-width:100%" aria-label="100 mL 메스플라스크">${bigFlask(S,{color:c,mixed,clipId:uid+'a',film:S.sealed})}</svg></div>
+      <div class="stack" style="align-items:center;gap:6px"><div class="zoom" style="width:230px;height:230px" aria-label="표선 확대"><svg viewBox="${120-30} ${FK.mark-30} 60 60" width="230" height="230">${bigFlask(S,{color:c,mixed:1,clipId:uid+'b',film:S.sealed})}
+        <line x1="80" x2="160" y1="${FK.mark}" y2="${FK.mark}" stroke="var(--accent)" stroke-width=".5" stroke-dasharray="1.5 1.5" opacity=".8"/></svg></div>
+        <span class="small muted">표선 확대 (눈높이)</span><span class="mono small">${S.level<.97?`${(S.level*100).toFixed(1)} mL`:`표선까지 ${d>=0?'+':''}${d.toFixed(2)} mL`}</span></div>`;
     $('#fsteps',el).innerHTML=steps.map((s,i)=>`<div class="stp ${i<idx()?'done':i===idx()?'cur':''}">${s}</div>`).join('');
-    $('#fSeal',el).disabled=S.phase!=='marked';$('#fInv',el).disabled=S.phase!=='sealed'||S.inverts>=10;$('#fInv',el).textContent=`뒤집어 섞기 (${S.inverts}/10)`;
+    $('#fSeal',el).disabled=S.phase!=='marked';$('#fMark',el).disabled=S.phase!=='fill';
+    $('#fInv',el).disabled=S.phase!=='sealed';$('#fInv',el).textContent=`누르고 있으면 뒤집어 섞기 (${S.inverts}회${S.inverts>=10?' ✓':''})`;
     $('#fOk',el).disabled=!(S.phase==='sealed'&&S.inverts>=10);
     $('#fPour',el).disabled=$('#fDrop',el).disabled=S.phase!=='fill';
   }
   const msg=(t,c='note')=>{$('#fmsg',el).innerHTML=`<div class="${c}">${t}</div>`};
   function check(){
-    if(S.level>1.086){S.phase='spill';msg('플라스크가 넘쳤어요! 시약을 흘렸습니다. (실기에서는 과도한 흘림 −5점) 다시 조제해야 해요.','note bad');onSpill&&onSpill('spill');draw();return}
+    if(S.level>FK.max){S.phase='spill';msg('플라스크가 넘쳤어요! 시약을 흘렸습니다. (실기에서는 과도한 흘림 −5점) 다시 조제해야 해요.','note bad');onSpill&&onSpill('spill');draw();return}
     if(S.level>1.004){msg(`표선을 넘었어요 (${((S.level-1)*100).toFixed(2)} mL 초과). 표선을 넘기면 덜어낼 수 없어요. 다시 조제하세요.`,'note bad');S.phase='over';onSpill&&onSpill('over');draw();return}
-    if(S.level>=0.998){S.phase='marked';msg('표선 일치! 메니스커스 아랫면이 표선에 닿았어요. 파라필름으로 밀봉하세요.','note ok')}
-    else if(S.level>.97)msg('표선 근처예요. 이제는 한 방울씩!','note warn');
+    if(S.level>.97)msg('표선 근처예요. 확대창을 보며 한 방울씩! 오목한 아랫부분이 표선에 닿으면 [표선 확인].','note warn');
     draw();
   }
-  holdButton($('#fPour',el),()=>{if(S.phase!=='fill')return;S.level+=S.level<.95?.01:.004;check()},60);
-  $('#fDrop',el).onclick=()=>{if(S.phase!=='fill')return;S.level+=0.0015;check()};
-  $('#fSeal',el).onclick=()=>{S.sealed=true;S.phase='sealed';msg('파라필름을 적당히 늘려 입구를 감쌌어요. 이제 뒤집어 섞으세요.');draw()};
-  $('#fInv',el).onclick=()=>{S.inverts++;rot=rot===0?180:0;draw();setTimeout(()=>{if(rot===180){rot=0;draw()}},380);if(S.inverts>=10)msg('균일하게 섞였어요!','note ok')};
+  holdButton($('#fPour',el),()=>{if(S.phase!=='fill')return;S.level+=S.level<.9?.012:S.level<.97?.004:.0015;check()},70);
+  $('#fDrop',el).onclick=()=>{if(S.phase!=='fill')return;S.level+=0.0008;check()};
+  $('#fMark',el).onclick=()=>{if(S.phase!=='fill')return;const d=S.level-1;
+    if(d<-0.0010){msg(d<-0.01?'아직 표선까지 한참 남았어요.':'아직 오목한 아랫면이 표선 아래에 있어요. 한 방울씩 더 넣어 보세요.','note warn');return}
+    if(d>0.0012){msg('오목한 아랫면이 표선보다 위에 있어요. 표선을 넘겼습니다. 다시 조제하세요.','note bad');S.phase='over';onSpill&&onSpill('over');draw();return}
+    S.phase='marked';msg('표선 일치! 메니스커스의 가장 아랫부분이 표선에 닿았어요. 파라필름으로 밀봉하세요.','note ok');draw()};
+  $('#fSeal',el).onclick=()=>{S.sealed=true;S.phase='sealed';msg('파라필름을 적당히 늘려 입구를 감쌌어요. 이제 [뒤집어 섞기] 버튼을 누르고 있으세요. 손을 떼면 멈춥니다.');draw()};
+  holdButton($('#fInv',el),()=>{if(S.phase!=='sealed')return;rot=rot===0?180:0;if(rot===0){S.inverts++;if(S.inverts===10)msg('10회 이상 뒤집어 섞었어요. 용액이 균일해졌습니다! [완료]를 누르세요.','note ok')}draw()},340);
+  $('#fInv',el).addEventListener('pointerup',()=>{if(rot!==0){rot=0;draw()}});$('#fInv',el).addEventListener('pointerleave',()=>{if(rot!==0){rot=0;draw()}});
   $('#fOk',el).onclick=()=>onDone&&onDone(S.level);
   draw();
-  return {reset(){Object.assign(S,{level:start,sealed:false,inverts:0,phase:'fill'});$('#fmsg',el).innerHTML='';draw()}};
+  return {reset(){Object.assign(S,{level:start,sealed:false,inverts:0,phase:'fill'});rot=0;$('#fmsg',el).innerHTML='';draw()}};
+}
+/* 스캔 그래프: 400→700 nm 자동 측정, 마우스로 값 읽기 */
+function scanChart(el,o){
+  const {f,from=400,to=700,step=2,dur=3200,lcd=false,W=640,H=300,onStep,onDone}=o;
+  const L=48,R=16,T=18,B=34;const ymax=o.ymax||0.8;
+  const x=l=>L+(l-from)/(to-from)*(W-L-R),y=a=>H-B-(Math.max(0,a)/ymax)*(H-T-B);
+  const ink=lcd?'#9CF2D6':'var(--muted)',grid=lcd?'rgba(156,242,214,.15)':'var(--line)',line=lcd?'#FFB414':'var(--accent)';
+  const pts=[];let raf=null,cur=null;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" class="chart" tabindex="0" style="touch-action:none;cursor:crosshair;outline:none" aria-label="흡수 스펙트럼, 마우스를 올리면 값이 보여요">
+   <defs><linearGradient id="vis${W}" x1="0" x2="1">${Array.from({length:16},(_,i)=>{const l=from+i*(to-from)/15;return `<stop offset="${i/15}" stop-color="${wlColor(l)}"/>`}).join('')}</linearGradient></defs>
+   <rect x="${L}" y="${H-B+2}" width="${W-L-R}" height="5" fill="url(#vis${W})" opacity=".85"/>
+   ${[0,.2,.4,.6,.8].filter(a=>a<=ymax+1e-9).map(a=>`<line x1="${L}" x2="${W-R}" y1="${y(a)}" y2="${y(a)}" stroke="${grid}"/><text x="${L-6}" y="${y(a)+4}" text-anchor="end" style="fill:${ink}">${a.toFixed(1)}</text>`).join('')}
+   ${[400,450,500,550,600,650,700].map(l=>`<text x="${x(l)}" y="${H-8}" text-anchor="middle" style="fill:${ink}">${l}</text>`).join('')}
+   <text x="${W-R}" y="${H-B-6}" text-anchor="end" style="fill:${ink}">파장 (nm)</text><text x="${L+4}" y="${T+8}" style="fill:${ink}">흡광도</text>
+   <polyline id="sl" fill="none" stroke="${line}" stroke-width="2.2" points=""/>
+   <line id="sc" y1="${T}" y2="${H-B}" stroke="${ink}" stroke-dasharray="3 3" opacity="0"/>
+   <g id="sh" opacity="0" pointer-events="none"><line id="shl" y1="${T}" y2="${H-B}" stroke="${lcd?'#fff':'var(--ink)'}" stroke-width="1" opacity=".5"/><circle id="shc" r="5" fill="${line}" stroke="${lcd?'#000':'#fff'}" stroke-width="1.5"/>
+    <rect id="shr" width="128" height="24" rx="5" fill="${lcd?'#E9FFF7':'var(--ink)'}"/><text id="sht" style="fill:${lcd?'#06201B':'var(--bg)'};font-size:12px" text-anchor="middle"></text></g>
+   <rect x="${L}" y="${T}" width="${W-L-R}" height="${H-T-B}" fill="transparent" id="shit"/>
+  </svg>`;
+  const svg=el.querySelector('svg');
+  function show(i){if(i==null||!pts[i])return;cur=i;const [l,a]=pts[i];const X=x(l),Y=y(a);const g=$('#sh',svg);g.setAttribute('opacity',1);
+    $('#shl',svg).setAttribute('x1',X);$('#shl',svg).setAttribute('x2',X);$('#shc',svg).setAttribute('cx',X);$('#shc',svg).setAttribute('cy',Y);
+    const rx=Math.min(W-R-130,Math.max(L+2,X-64)),ry=Y<T+40?Y+12:Y-34;$('#shr',svg).setAttribute('x',rx);$('#shr',svg).setAttribute('y',ry);
+    const t=$('#sht',svg);t.setAttribute('x',rx+64);t.setAttribute('y',ry+16);t.textContent=`${l} nm · A ${a.toFixed(4)}`;o.onHover&&o.onHover(l,a)}
+  svg.addEventListener('pointermove',e=>{if(!pts.length)return;const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(svg.getScreenCTM().inverse());const l=from+(q.x-L)/(W-L-R)*(to-from);
+    let bi=0,bd=1e9;pts.forEach((pt,i)=>{const d=Math.abs(pt[0]-l);if(d<bd){bd=d;bi=i}});show(bi)});
+  svg.addEventListener('keydown',e=>{if(!pts.length)return;const d={ArrowLeft:-1,ArrowRight:1}[e.key];if(!d)return;e.preventDefault();e.stopPropagation();show(Math.max(0,Math.min(pts.length-1,(cur??0)+d*(e.shiftKey?5:1))))});
+  return {
+    start(){cancelAnimationFrame(raf);pts.length=0;$('#sh',svg).setAttribute('opacity',0);const n=Math.round((to-from)/step);const t0=performance.now();
+      const tick=now=>{const k=Math.max(0,Math.min(n,Math.floor((now-t0)/dur*n)));while(pts.length<=k){const l=from+pts.length*step;pts.push([l,f(l)+gauss()*0.0015])}
+        $('#sl',svg).setAttribute('points',pts.map(p=>x(p[0])+','+y(p[1])).join(' '));const lc=pts[pts.length-1][0];const c=$('#sc',svg);c.setAttribute('x1',x(lc));c.setAttribute('x2',x(lc));c.setAttribute('opacity',.8);onStep&&onStep(lc);
+        if(k<n)raf=requestAnimationFrame(tick);else{c.setAttribute('opacity',0);onDone&&onDone(pts)}};
+      raf=requestAnimationFrame(tick);onLeave(()=>cancelAnimationFrame(raf))},
+    get points(){return pts}
+  };
 }
 
 /* 분광 모델 */
@@ -886,11 +1001,11 @@ function Spectro(el,o){
     return A;
   }
   function renderHolder(){
-    $('#hold',el).innerHTML=S.holder.map((sid,i)=>{const sol=o.getSol(sid);return `<button class="pos ${S.sel===i?'sel':''}" data-p="${i}" aria-label="#${i+1} ${sol?sol.name:'비어 있음'}"><span>#${i+1}${i===7?' (Blank)':''}</span><span class="cv">${sol?`<i style="background:${sol.color||'transparent'}"></i>`:''}</span><span style="font-size:10px;line-height:1.2;text-align:center">${sol?esc(sol.short||sol.name):'—'}</span></button>`}).join('');
+    $('#hold',el).innerHTML=S.holder.map((sid,i)=>{const sol=o.getSol(sid);return `<button class="pos ${S.sel===i?'sel':''}" data-p="${i}" aria-label="#${i+1} ${sol?sol.name:'비어 있음'}"><span>#${i+1}${i===0?' (Blank)':''}</span><span class="cv">${sol?`<i style="background:${sol.color||'transparent'}"></i>`:''}</span><span style="font-size:10px;line-height:1.2;text-align:center">${sol?esc(sol.short||sol.name):'—'}</span></button>`}).join('');
     $$('[data-p]',el).forEach(b=>b.onclick=()=>{const i=+b.dataset.p;
       if(S.holder[i]){S.holder[i]=null;renderHolder();o.onEvent&&o.onEvent('remove',{pos:i});return}
       if(S.pick==null){toast('먼저 아래 시료 선반에서 용액을 고르세요');return}
-      const sid=S.pick;const put=()=>{S.holder=S.holder.map(x=>x===sid?null:x);S.holder[i]=sid;S.pick=null;renderRack();renderHolder();o.onEvent&&o.onEvent('insert',{pos:i,sid})};
+      const sid=S.pick;const put=()=>{S.holder=S.holder.map(x=>x===sid?null:x);S.holder[i]=sid;S.pick=null;renderRack();renderHolder();if(S.view==='spec')screen();o.onEvent&&o.onEvent('insert',{pos:i,sid})};
       if(o.beforeInsert)o.beforeInsert(sid,put);else put();
     });
   }
@@ -908,7 +1023,20 @@ function Spectro(el,o){
       scr.innerHTML=`<div>측정 모드 선택</div><div class="grid" style="grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
       <button data-m="photo">측광 모드<br><span style="opacity:.6">Photometric</span></button><button data-m="quant">정량 모드<br><span style="opacity:.6">Quantitation</span></button>
       <button data-m="spec">스펙트럼<br><span style="opacity:.6">Spectrum</span></button><button data-m="kin">키네틱<br><span style="opacity:.6">Kinetics</span></button></div>`;
-      $$('[data-m]',scr).forEach(b=>b.onclick=()=>{const m=b.dataset.m;if(m==='spec'||m==='kin'){toast('이번 실습에서는 사용하지 않는 모드예요');o.onEvent&&o.onEvent('wrongmode',m);return}S.mode=m;S.view='setup';screen();o.onEvent&&o.onEvent('mode',m)});return}
+      $$('[data-m]',scr).forEach(b=>b.onclick=()=>{const m=b.dataset.m;if(m==='kin'){toast('이번 실습에서는 사용하지 않는 모드예요');o.onEvent&&o.onEvent('wrongmode',m);return}if(m==='spec'){S.mode='spec';S.view='spec';screen();o.onEvent&&o.onEvent('mode',m);return}S.mode=m;S.view='setup';screen();o.onEvent&&o.onEvent('mode',m)});return}
+    if(S.view==='spec'){
+      const sol=o.getSol(S.holder[1]);
+      scr.innerHTML=`<div class="row" style="justify-content:space-between"><span>스펙트럼 모드 · 400~700 nm</span><span id="spl" style="opacity:.8"></span></div>
+       <div style="opacity:.75;margin-top:4px">${sol?'#2 '+esc(sol.short||sol.name)+' 을(를) 스캔합니다':'#2 칸에 스캔할 용액을 넣으세요'}</div>
+       <div id="specbox" style="margin-top:6px;background:#06120F;border-radius:6px"></div>
+       <div class="row" style="margin-top:6px;gap:6px"><button id="sps">스캔 시작</button><button id="spb">모드 선택</button></div>
+       <div style="opacity:.7;margin-top:4px;font-size:11.5px">스캔 후 그래프 위에 마우스를 올리면 파장과 흡광도가 보여요. 가장 높은 점이 λmax!</div>`;
+      $('#spb',scr).onclick=()=>{S.view='home';screen()};
+      $('#sps',scr).onclick=()=>{const s1=o.getSol(S.holder[1]);if(!s1){toast('#2 칸에 스캔할 용액을 넣으세요');return}
+        const base=S.zeroed?0:0.045;const k=(s1.ppm||0)*inst.slope/SPEC.km.f(540);const fn=l=>k*SPEC[s1.spec||'km'].f(l)+(s1.ppm?inst.b:0)+base;
+        let mx=0;for(let l=400;l<=700;l+=5)mx=Math.max(mx,fn(l));const ymax=Math.max(.2,Math.ceil(mx*1.25*5)/5);
+        const ch=scanChart($('#specbox',scr),{f:fn,lcd:true,W:340,H:190,ymax,dur:2600,onStep:l=>{const e=$('#spl',scr);if(e)e.textContent='λ '+l+' nm'},onDone:pts=>{const p=pts.reduce((a,b)=>b[1]>a[1]?b:a);o.onEvent&&o.onEvent('spectrum',{peak:p[0]})}});ch.start()};
+      return}
     if(S.view==='setup'){
       scr.innerHTML=`<div>${S.mode==='quant'?'정량 모드 · 검량선 설정':'측광 모드 설정'}</div>
       <div class="stack" style="gap:8px;margin-top:10px">
@@ -929,8 +1057,8 @@ function Spectro(el,o){
     }
   }
   function autoZero(){
-    const sid=S.holder[7];const sol=o.getSol(sid);
-    if(!sol){toast('#8 칸에 바탕 용액(Blank)을 넣고 오토 제로를 누르세요');o.onEvent&&o.onEvent('zero',{ok:false,why:'empty'});return}
+    const sid=S.holder[0];const sol=o.getSol(sid);
+    if(!sol){toast('#1 칸에 바탕 용액(Blank)을 넣고 오토 제로를 누르세요');o.onEvent&&o.onEvent('zero',{ok:false,why:'empty'});return}
     const raw=(sol.ppm||0)*inst.slope*(SPEC.km.f(S.lam||540)/SPEC.km.f(540))+(sol.ppm?inst.b:0)+(sol.dirty?0.015:0);
     S.zeroBase=raw;S.zeroed=true;S.last=0;screen();
     const ok=!sol.ppm&&!sol.dirty;
@@ -938,8 +1066,8 @@ function Spectro(el,o){
     o.onEvent&&o.onEvent('zero',{ok,lam:S.lam});
   }
   function measure(){
-    const pos=S.holder.map((sid,i)=>({sid,i})).filter(x=>x.sid&&x.i<7);
-    if(!pos.length){toast('#1~#7 칸에 측정할 용액을 넣으세요');return}
+    const pos=S.holder.map((sid,i)=>({sid,i})).filter(x=>x.sid&&x.i>0);
+    if(!pos.length){toast('#2~#8 칸에 측정할 용액을 넣으세요');return}
     const res=pos.map(x=>{const sol=o.getSol(x.sid);const A=Math.round(absOf(sol)*1e4)/1e4+0;return {pos:x.i,sid:x.sid,name:sol.short||sol.name,A}});
     S.rows.push(...res);S.last=res[res.length-1].A;screen();o.onEvent&&o.onEvent('measure',res);
   }
@@ -972,14 +1100,14 @@ function markDone(k){const d=store.get('prac',{});const first=!d[k];d[k]=1;store
 const TOOLS=[
  {k:'flask',n:'메스플라스크',svg:()=>flaskSVG({w:70,h:80,level:.6,alpha:.4}),use:'정확한 부피(100 mL)의 용액을 만드는 기구. 표준용액 조제와 미지시료 희석에 씁니다.',how:['용액을 피펫으로 넣은 뒤 증류수를 채운다','표선 근처에서는 세척병으로 한 방울씩','메니스커스 아랫면을 눈높이에서 표선에 맞춘다','파라필름으로 밀봉하고 천천히 뒤집어 섞는다'],care:'표선을 넘기면 덜어내지 말고 다시 조제합니다. 가열하지 않아요.'},
  {k:'vpip',n:'눈금 피펫',svg:()=>`<svg viewBox="0 0 70 80"><rect x="31" y="4" width="8" height="64" fill="none" stroke="var(--ink)" stroke-width="1.5"/>${Array.from({length:10},(_,i)=>`<line x1="31" x2="${i%5?35:39}" y1="${10+i*5.5}" y2="${10+i*5.5}" stroke="var(--ink)"/>`).join('')}<path d="M31 68 L34 78 H36 L39 68" fill="none" stroke="var(--ink)" stroke-width="1.5"/><rect x="32" y="36" width="6" height="32" fill="var(--liquid)" opacity=".6"/></svg>`,use:'눈금이 있어 0.5 mL, 1 mL, 1.5 mL처럼 원하는 부피를 옮길 수 있어요. 표준용액(1000 ppm) 소량을 취할 때 사용.',how:['필러를 끼우고 A로 공기를 뺀다','끝을 용액에 깊숙이 넣고 S로 흡입','E로 원하는 눈금에 맞춘 뒤 옮긴다'],care:'입으로 빨지 않아요. 눈금은 눈높이에서 읽어요.'},
- {k:'hpip',n:'홀 피펫',svg:()=>`<svg viewBox="0 0 70 80"><rect x="32" y="2" width="6" height="22" fill="none" stroke="var(--ink)" stroke-width="1.5"/><ellipse cx="35" cy="38" rx="9" ry="14" fill="var(--glass-soft)" stroke="var(--ink)" stroke-width="1.5"/><rect x="32" y="52" width="6" height="18" fill="none" stroke="var(--ink)" stroke-width="1.5"/><line x1="28" x2="42" y1="12" y2="12" stroke="var(--accent)" stroke-width="2"/><path d="M32 70 L34 78 H36 L38 70" fill="none" stroke="var(--ink)" stroke-width="1.5"/></svg>`,use:'표선이 하나뿐인 부피 피펫. 10 mL, 20 mL처럼 정해진 부피를 가장 정확하게 옮깁니다. 미지시료 희석에 사용.',how:['미지시료 10배 희석: 10 mL 취해 100 mL 플라스크로','5배 희석: 10 mL 피펫으로 2번(20 mL) 넣기'],care:'끝에 남은 마지막 한 방울은 불어내지 않아요.'},
- {k:'filler',n:'안전 피펫 필러',svg:()=>`<svg viewBox="0 0 70 80"><circle cx="35" cy="30" r="20" fill="#d44" opacity=".85"/><text x="35" y="34" text-anchor="middle" font-size="11" fill="#fff" font-family="IBM Plex Mono">A S E</text><rect x="31" y="50" width="8" height="26" fill="none" stroke="var(--ink)" stroke-width="1.5"/></svg>`,use:'피펫 위에 끼워 용액을 안전하게 빨아올리고 내보내는 고무 기구.',how:['A (Air): 눌러서 필러 속 공기 빼기','S (Suction): 눌러서 용액 빨아올리기','E (Empty): 눌러서 용액 내보내기'],care:'용액이 필러 속까지 올라가지 않게 조심!'},
+ {k:'hpip',n:'홀 피펫',svg:()=>`<svg viewBox="0 0 70 80"><path d="M33.5 1 V22 C33.5 26 27 28 27 40 C27 52 33.8 54 33.8 58 V74 L34.6 79 H35.4 L36.2 74 V58 C36.2 54 43 52 43 40 C43 28 36.5 26 36.5 22 V1Z" fill="var(--glass-soft)" stroke="var(--ink)" stroke-width="1.2"/><line x1="31" x2="39" y1="9" y2="9" stroke="var(--accent)" stroke-width="1.6"/><path d="M27.6 44 C27.6 52 34 54 34 58 V74 L35 78 L36 74 V58 C36 54 42.4 52 42.4 44Z" fill="var(--liquid)" opacity=".55"/></svg>`,use:'표선이 하나뿐인 부피 피펫. 10 mL, 20 mL처럼 정해진 부피를 가장 정확하게 옮깁니다. 미지시료 희석에 사용.',how:['미지시료 10배 희석: 10 mL 취해 100 mL 플라스크로','5배 희석: 10 mL 피펫으로 2번(20 mL) 넣기'],care:'끝에 남은 마지막 한 방울은 불어내지 않아요.'},
+ {k:'filler',n:'안전 피펫 필러',svg:()=>`<svg viewBox="0 0 70 80"><g transform="translate(-4,0) scale(.42)">${fillerSVG(85,2,{})}</g></svg>`,use:'피펫 위에 끼워 용액을 안전하게 빨아올리고 내보내는 고무 기구.',how:['A (Air): 눌러서 필러 속 공기 빼기','S (Suction): 눌러서 용액 빨아올리기','E (Empty): 눌러서 용액 내보내기'],care:'용액이 필러 속까지 올라가지 않게 조심!'},
  {k:'beaker',n:'비커',svg:()=>beakerSVG('var(--liquid)',.45),use:'용액을 잠시 덜어 두는 용기. 작은 비커 2개에 1000 ppm 표준용액과 미지시료를 따로 덜어 오고, 큰 비커는 폐액용.',how:['원액병에 피펫을 직접 넣지 않고 비커에 덜어서 사용','비커마다 내용물을 구분해 둔다'],care:'비커 눈금은 대략적인 값이에요. 정확한 부피 측정용이 아닙니다.'},
  {k:'wash',n:'세척병',svg:()=>`<svg viewBox="0 0 70 80"><path d="M22 30 h26 v42 a4 4 0 0 1 -4 4 h-18 a4 4 0 0 1 -4 -4z" fill="var(--glass-soft)" stroke="var(--ink)" stroke-width="1.5"/><path d="M35 30 V14 H58 L64 22" fill="none" stroke="var(--ink)" stroke-width="1.8"/></svg>`,use:'증류수가 담긴 짜는 병. 셀 세척, 기구 헹굼, 표선 맞추기에 사용.',how:['눌러 짜면 가늘게 나온다','표선 근처에서는 살짝 눌러 한 방울씩'],care:'세척병 입구가 다른 용액에 닿지 않게 해요.'},
  {k:'film',n:'파라필름',svg:()=>`<svg viewBox="0 0 70 80"><rect x="12" y="28" width="46" height="26" rx="3" fill="var(--glass-soft)" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="3 2"/><path d="M12 41 H58" stroke="var(--muted)"/></svg>`,use:'잘 늘어나는 밀봉 필름. 메스플라스크 입구를 막고 뒤집어 섞을 때 사용.',how:['적당히 늘려서 플라스크 입구를 감싼다','잘 밀봉되었는지 확인 후 천천히 뒤집어 섞기'],care:'너무 세게 늘리면 찢어져 새어요.'},
  {k:'cuvette',n:'흡수셀(큐벳)',svg:()=>cuvetteSVG('var(--liquid)',{w:40,h:78}),use:'분광광도계에 넣는 시료 용기. 빛이 지나는 투명한 면과 손으로 잡는 불투명(젖빛) 면이 있어요.',how:['불투명한 면을 잡는다','측정할 용액으로 2~3회 헹군 뒤 4/5 정도 채운다','바깥면을 와이퍼로 닦는다','투명한 면이 빛이 지나는 방향으로 넣는다'],care:'자외선 영역은 석영 셀, 가시광선은 유리·플라스틱·석영 셀.'},
  {k:'wiper',n:'와이퍼(킴와이프)',svg:()=>`<svg viewBox="0 0 70 80"><rect x="14" y="30" width="42" height="36" rx="4" fill="var(--surface2)" stroke="var(--ink)" stroke-width="1.5"/><path d="M28 30 q7 -16 14 0" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.2"/></svg>`,use:'보풀이 적은 실험용 화장지. 셀 바깥면의 물방울과 지문을 닦을 때 씁니다.',how:['셀 바깥면을 위에서 아래로 살살 닦는다'],care:'셀 안쪽(광로 면)에 흠집이 나지 않도록 문지르지 않아요.'},
- {k:'spec',n:'분광광도계',svg:()=>`<svg viewBox="0 0 70 80"><rect x="6" y="26" width="58" height="40" rx="6" fill="var(--glass-soft)" stroke="var(--ink)" stroke-width="1.5"/><rect x="12" y="32" width="24" height="16" rx="2" fill="var(--lcd)"/><rect x="42" y="32" width="16" height="26" rx="2" fill="none" stroke="var(--ink)"/></svg>`,use:'특정 파장의 빛을 시료에 통과시켜 흡광도(A)와 투과율(%T)을 측정하는 기기.',how:['전원 → 자체 진단 대기','정량 모드 선택 → 파장 540 nm 입력','#8에 Blank 넣고 오토 제로','표준용액·미지시료 측정'],care:'측정 전 반드시 영점 조정(100 %T, 0 A).'}
+ {k:'spec',n:'분광광도계',svg:()=>`<svg viewBox="0 0 70 80"><rect x="6" y="26" width="58" height="40" rx="6" fill="var(--glass-soft)" stroke="var(--ink)" stroke-width="1.5"/><rect x="12" y="32" width="24" height="16" rx="2" fill="var(--lcd)"/><rect x="42" y="32" width="16" height="26" rx="2" fill="none" stroke="var(--ink)"/></svg>`,use:'특정 파장의 빛을 시료에 통과시켜 흡광도(A)와 투과율(%T)을 측정하는 기기.',how:['전원 → 자체 진단 대기','정량 모드 선택 → 파장 540 nm 입력','#1에 Blank 넣고 오토 제로','표준용액·미지시료 측정'],care:'측정 전 반드시 영점 조정(100 %T, 0 A).'}
 ];
 function pTools(el){
   let cur=TOOLS[0];const seen=new Set();
@@ -1008,7 +1136,7 @@ function pTools(el){
 }
 function pPipette(el){
   el.innerHTML=`<div class="note" style="margin-bottom:12px">미션: 1000 ppm KMnO₄ 표준용액을 <b>1 mL 눈금 피펫</b>으로 정확히 1.00 mL 취해 옮기세요. 오차 ±0.5 % 이내면 성공!</div><div id="pg"></div>`;
-  pipetteGame($('#pg',el),{target:'1.00',kind:'눈금 피펫',onDone:acc=>{if(Math.abs(acc-1)<=.005){markDone('pipette');toast('피펫 미션 성공!')}}});
+  pipetteGame($('#pg',el),{target:'1.00',kind:'1 mL 눈금 피펫',srcLabel:'1000 ppm 원액 비커',onDone:acc=>{if(Math.abs(acc-1)<=.005){markDone('pipette');toast('피펫 미션 성공!')}}});
 }
 function pFlask(el){
   el.innerHTML=`<div class="note" style="margin-bottom:12px">미션: 1000 ppm 원액 1.00 mL가 들어 있는 100 mL 메스플라스크에 증류수를 채워 <b>10 ppm 표준용액</b>을 만드세요. 표선을 넘기면 실패!</div><div id="fg"></div>`;
@@ -1067,50 +1195,34 @@ function pStructure(el){
   draw();
 }
 function pLmax(el){
-  const S={s:'km',pts:{},answered:{}};
-  function chart(){
-    const W=640,H=300,L=48,R=16,T=16,B=36,x=l=>L+(l-380)/(720-380)*(W-L-R),y=a=>H-B-(a/0.8)*(H-T-B);
-    const pts=Object.entries(S.pts[S.s]||{}).map(([l,a])=>[+l,a]).sort((a,b)=>a[0]-b[0]);
-    const full=S.answered[S.s]?Array.from({length:171},(_,i)=>380+i*2).map(l=>[l,SPEC[S.s].f(l)]):[];
-    return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="흡수 스펙트럼">
-     <defs><linearGradient id="vis" x1="0" x2="1">${Array.from({length:18},(_,i)=>{const l=380+i*20;return `<stop offset="${(l-380)/340}" stop-color="${wlColor(l)}"/>`}).join('')}</linearGradient></defs>
-     <rect x="${L}" y="${H-B+2}" width="${W-L-R}" height="6" fill="url(#vis)" opacity=".8"/>
-     ${[0,.2,.4,.6,.8].map(a=>`<line x1="${L}" x2="${W-R}" y1="${y(a)}" y2="${y(a)}" stroke="var(--line)"/><text x="${L-6}" y="${y(a)+4}" text-anchor="end">${a.toFixed(1)}</text>`).join('')}
-     ${[400,450,500,550,600,650,700].map(l=>`<text x="${x(l)}" y="${H-10}" text-anchor="middle">${l}</text>`).join('')}
-     <text x="${W-R}" y="${H-B-6}" text-anchor="end">파장 (nm)</text><text x="${L+4}" y="${T+10}">흡광도</text>
-     ${full.length?`<polyline points="${full.map(p=>x(p[0])+','+y(p[1])).join(' ')}" fill="none" stroke="var(--glass)" stroke-width="2" opacity=".7"/>`:''}
-     <line x1="${x(S.cur||540)}" x2="${x(S.cur||540)}" y1="${T}" y2="${H-B}" stroke="var(--ink)" stroke-dasharray="3 3" opacity=".5" pointer-events="none"/>
-     ${pts.length>1?`<polyline points="${pts.map(p=>x(p[0])+','+y(p[1])).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="1.5"/>`:''}
-     ${pts.map(p=>{const tx=Math.min(W-R-118,Math.max(L+2,x(p[0])-58)),ty=y(p[1])<T+40?y(p[1])+12:y(p[1])-34;return `<g class="pt" tabindex="0" aria-label="${p[0]} nm 흡광도 ${p[1].toFixed(4)}"><circle cx="${x(p[0])}" cy="${y(p[1])}" r="10" fill="transparent"/><circle cx="${x(p[0])}" cy="${y(p[1])}" r="4.5" fill="var(--accent)"/><g class="tip"><rect x="${tx}" y="${ty}" width="116" height="24" rx="5" fill="var(--ink)"/><text x="${tx+58}" y="${ty+16}" text-anchor="middle" style="fill:var(--bg);font-size:11.5px">${p[0]} nm · A ${p[1].toFixed(4)}</text></g></g>`}).join('')}
-    </svg>`;
-  }
-  S.cur=400;
-  arrowKeys(d=>{if(!$('#wl',el))return;S.cur=Math.max(380,Math.min(720,S.cur+(Math.abs(d)>1?25:5)*Math.sign(d)));draw()});
+  const S={s:'km',answered:{},scanned:{}};
   function draw(){
-    const n=Object.keys(S.pts[S.s]||{}).length;
-    el.innerHTML=`<div class="note" style="margin-bottom:12px">미션: 파장을 바꿔 가며 흡광도를 측정해 <b>흡수 스펙트럼</b>을 그리고, 가장 높은 봉우리의 파장 <b>λmax</b>를 찾으세요. 측정점 6개 이상이면 제출할 수 있어요.</div>
-    <div class="bench"><div class="card">
+    const sp=SPEC[S.s];
+    el.innerHTML=`<div class="note" style="margin-bottom:12px">미션: [스캔 측정]을 누르면 분광광도계가 <b>400 → 700 nm</b>로 파장을 옮기며 흡광도를 자동으로 잽니다. 그래프의 가장 높은 곳에 마우스를 올려 <b>λmax</b>를 읽고 제출하세요. 용액 2가지 이상 맞히면 미션 완료!</div>
+    <div class="bench wider"><div class="card">
       <div class="row">${Object.entries(SPEC).map(([k,v])=>`<button class="btn sm ${S.s===k?'pri':''}" data-s="${k}"><span style="width:12px;height:12px;border-radius:3px;background:${v.color};display:inline-block"></span>${v.name}${S.answered[k]?' ✓':''}</button>`).join('')}</div>
-      <div style="margin-top:10px">${chart()}</div></div>
+      <div id="lchart" style="margin-top:10px"></div>
+      <p class="small muted" id="lhint" style="margin-top:4px">스캔이 끝나면 그래프 위에 마우스를 올려 보세요. (그래프를 누른 뒤 ← → 키로도 이동)</p></div>
      <div class="stack"><div class="panel">
-       <label class="stack" style="gap:6px"><span class="row" style="justify-content:space-between"><b>측정 파장</b><span class="mono" style="font-size:20px">${S.cur} nm</span></span>
-       <input type="range" id="wl" min="380" max="720" step="5" value="${S.cur}"></label><span class="small muted">키보드 ← → 5 nm씩 (Shift 25 nm) · 점에 마우스를 올리면 흡광도가 보여요</span>
-       <div class="row" style="margin-top:8px"><span style="width:28px;height:28px;border-radius:6px;background:${wlColor(S.cur)};border:1px solid var(--line)"></span><span class="small muted">셀에 쏘는 단색광</span>
-       <button class="btn sm" id="m5">−5</button><button class="btn sm" id="p5">+5</button></div>
-       <div class="row" style="margin-top:10px"><button class="btn pri" id="meas">측정</button><span class="mono">${S.pts[S.s]?.[S.cur]!=null?'A = '+S.pts[S.s][S.cur].toFixed(4):''}</span></div>
+       <div class="row" style="justify-content:space-between"><b>분광광도계</b><span class="mono" id="lcur" style="font-size:20px">400 nm</span></div>
+       <div class="row" style="margin-top:8px"><span id="lbeam" style="width:28px;height:28px;border-radius:6px;background:${wlColor(400)};border:1px solid var(--line)"></span><span class="small muted">셀에 쏘는 단색광</span><span style="display:inline-block;width:18px;height:28px;border:1.5px solid var(--ink);border-radius:2px;background:${sp.color}"></span></div>
+       <div class="row" style="margin-top:10px"><button class="btn pri" id="lscan">스캔 측정 (400 → 700 nm)</button></div>
+       <p class="mono small" id="lread" style="margin-top:8px;min-height:1.4em"></p>
       </div>
-      <div class="panel"><b>λmax 제출</b> <span class="small muted">(측정점 ${n}개)</span>
-       <div class="ansrow"><input id="lm" inputmode="numeric" placeholder="nm" ${n<6?'disabled':''}><button class="btn" id="sub" ${n<6?'disabled':''}>제출</button></div><div id="lmfb" style="margin-top:8px"></div></div>
+      <div class="panel"><b>λmax 제출</b>
+       <div class="ansrow"><input id="lm" inputmode="numeric" placeholder="nm" ${S.scanned[S.s]?'':'disabled'}><button class="btn" id="sub" ${S.scanned[S.s]?'':'disabled'}>제출</button></div><div id="lmfb" style="margin-top:8px"></div></div>
       <details class="panel"><summary><b>힌트: 용액 색과 흡수 파장 (표 1-2)</b></summary><div class="tw" style="margin-top:8px"><table class="table"><tr><th>용액의 색</th><th>흡수되는 빛</th><th>파장(nm)</th></tr>
       ${[['황록','보라','400~435'],['노랑~주황','파랑','435~490'],['빨강','청록','490~500'],['자주(보라)','초록','500~560'],['보라','황록','560~580'],['파랑~청록','노랑~주황','580~650'],['청록','빨강','650~700']].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td class="mono">${r[2]}</td></tr>`).join('')}</table></div></details>
      </div></div>`;
-    $$('[data-s]',el).forEach(b=>b.onclick=()=>{S.s=b.dataset.s;S.cur=400;draw()});
-    const wl=$('#wl',el);wl.oninput=()=>{S.cur=+wl.value;draw();$('#wl',el).focus()};
-    $('#m5',el).onclick=()=>{S.cur=Math.max(380,S.cur-5);draw()};$('#p5',el).onclick=()=>{S.cur=Math.min(720,S.cur+5);draw()};
-    $('#meas',el).onclick=()=>{(S.pts[S.s]=S.pts[S.s]||{})[S.cur]=SPEC[S.s].f(S.cur)+gauss()*.002;draw()};
-    const sb=$('#sub',el);if(sb)sb.onclick=()=>{const v=parseFloat($('#lm',el).value);const t=lmaxOf(S.s);
-      if(Math.abs(v-t)<=8){S.answered[S.s]=1;draw();$('#lmfb',el).innerHTML=`<div class="note ok">정답! 이 용액의 λmax ≈ ${t} nm. 파란 선이 전체 스펙트럼이에요. ${S.s==='km'?'KMnO₄는 540 nm에서 측정합니다 — 실기시험 교정 파장!':''}</div>`;if(Object.keys(S.answered).length>=2)markDone('lmax')}
-      else $('#lmfb',el).innerHTML=`<div class="note bad">${v>t?'조금 더 짧은':'조금 더 긴'} 파장 쪽을 더 촘촘히 측정해 보세요.</div>`};
+    const ch=scanChart($('#lchart',el),{f:sp.f,dur:3600,
+      onStep:l=>{$('#lcur',el).textContent=l+' nm';$('#lbeam',el).style.background=wlColor(l)},
+      onHover:(l,a)=>{$('#lread',el).textContent=`읽은 값: ${l} nm → A ${a.toFixed(4)}`},
+      onDone:()=>{S.scanned[S.s]=1;$('#lm',el).disabled=false;$('#sub',el).disabled=false;$('#lscan',el).disabled=false;$('#lscan',el).textContent='다시 스캔';$('#lhint',el).innerHTML='<b>스캔 완료!</b> 그래프 위에 마우스를 올려 가장 높은 점의 파장을 찾으세요.'}});
+    $$('[data-s]',el).forEach(b=>b.onclick=()=>{S.s=b.dataset.s;draw()});
+    $('#lscan',el).onclick=()=>{$('#lscan',el).disabled=true;$('#lread',el).textContent='';ch.start()};
+    $('#sub',el).onclick=()=>{const v=parseFloat($('#lm',el).value);const t=lmaxOf(S.s);
+      if(Math.abs(v-t)<=6){S.answered[S.s]=1;$('#lmfb',el).innerHTML=`<div class="note ok">정답! 이 용액의 λmax ≈ ${t} nm. ${S.s==='km'?'KMnO₄는 540 nm에서 측정합니다 — 실기시험 교정 파장!':''}</div>`;$(`[data-s="${S.s}"]`,el).innerHTML+=' ✓';if(Object.keys(S.answered).length>=2)markDone('lmax')}
+      else $('#lmfb',el).innerHTML=`<div class="note bad">${isNaN(v)?'숫자로 입력하세요.':(v>t?'조금 더 짧은':'조금 더 긴')+' 파장 쪽에서 가장 높은 점을 다시 찾아보세요.'}</div>`};
   }
   draw();
 }
@@ -1165,15 +1277,14 @@ function pCell(el){
 }
 function pZero(el){
   const unk=r2(rnd(6.5,13.5));
-  const sols={blank:{id:'blank',name:'증류수 (#8 영점용)',short:'Blank #8용',ppm:0,color:'rgba(200,230,255,.5)'},
-    s0:{id:'s0',name:'0 ppm (Blank)',short:'0 ppm',ppm:0,color:'rgba(200,230,255,.5)'},
+  const sols={blank:{id:'blank',name:'Blank (증류수)',short:'Blank',ppm:0,color:'rgba(200,230,255,.5)'},
     s5:{id:'s5',name:'5 ppm 표준',short:'5 ppm',ppm:5,color:kmColor(5)},s10:{id:'s10',name:'10 ppm 표준',short:'10 ppm',ppm:10,color:kmColor(10)},
     s15:{id:'s15',name:'15 ppm 표준',short:'15 ppm',ppm:15,color:kmColor(15)},unk:{id:'unk',name:'미지시료 (희석액)',short:'미지시료',ppm:unk,color:kmColor(unk)}};
-  const ORDER=['s0','s5','s10','s15','unk'];
+  const ORDER=['blank','s5','s10','s15','unk'];
   const done={power:0,mode:0,lam:0,zero:0,place:0,meas:0};
-  el.innerHTML=`<div class="bench"><div id="sp"></div><div class="stack"><div class="panel"><b>미션: 영점 조정 후 표준·미지시료 한 번에 측정</b><div class="steps" id="zs" style="margin-top:8px"></div></div>
+  el.innerHTML=`<div class="bench"><div id="sp"></div><div class="stack"><div class="panel"><b>미션: #1 Blank로 영점 조정 → 표준 3개·미지시료 한 번에 측정</b><div class="steps" id="zs" style="margin-top:8px"></div></div>
    <div class="panel"><b>셀 배치 현황</b><div class="tw" style="margin-top:6px"><table class="table" id="zplace"></table></div></div><div id="zmsg"></div></div></div>`;
-  const steps=[['power','전원 켜기 → 자체 진단 완료까지 대기'],['mode','정량 모드 선택'],['lam','파장 540 nm 입력 후 확인'],['zero','#8에 Blank 넣고 오토 제로'],['place','#1~#5에 0 → 5 → 10 → 15 ppm → 미지시료 순서로 넣기'],['meas','[측정] 한 번으로 5개 동시 측정']];
+  const steps=[['power','전원 켜기 → 자체 진단 완료까지 대기'],['mode','정량 모드 선택'],['lam','파장 540 nm 입력 후 확인'],['zero','#1에 Blank(증류수)를 넣고 먼저 오토 제로'],['place','#2~#5에 5 → 10 → 15 ppm → 미지시료 순서로 넣기'],['meas','[측정] 한 번으로 4개 동시 측정']];
   const placedOk=()=>ORDER.every((id,i)=>sp.S.holder[i]===id);
   const ds=()=>{$('#zs',el).innerHTML=steps.map(([k,t],i)=>{const d=done[k];const cur=!d&&steps.slice(0,i).every(([kk])=>done[kk]);return `<div class="stp ${d?'done':cur?'cur':''}">${t}</div>`}).join('');
     $('#zplace',el).innerHTML=`<tr><th>칸</th>${ORDER.map((_,i)=>`<th>#${i+1}</th>`).join('')}</tr><tr><th>넣어야 할 용액</th>${ORDER.map(id=>`<td>${sols[id].short}</td>`).join('')}</tr><tr><th>지금</th>${ORDER.map((id,i)=>{const h=sp.S.holder[i];return `<td>${h?(h===id?'<span class="pill ok">✓ '+sols[h].short+'</span>':'<span class="pill bad">'+sols[h].short+'</span>'):'—'}</td>`}).join('')}</tr>`};
@@ -1185,10 +1296,10 @@ function pZero(el){
     if(e==='measure'){const zsOk=sp.S.zeroed;const ok=placedOk();
       const get=id=>d.find(x=>x.sid===id);
       let fit='';
-      if(ok){const P=['s0','s5','s10','s15'].map(id=>[sols[id].ppm,get(id).A]);const n=4,sx=P.reduce((s,p)=>s+p[0],0),sy=P.reduce((s,p)=>s+p[1],0),sxx=P.reduce((s,p)=>s+p[0]*p[0],0),sxy=P.reduce((s,p)=>s+p[0]*p[1],0);const m=(n*sxy-sx*sy)/(n*sxx-sx*sx),k=(sy-m*sx)/n;const cu=(get('unk').A-k)/m;
+      if(ok){const P=[[0,0],...['s5','s10','s15'].map(id=>[sols[id].ppm,get(id).A])];const n=4,sx=P.reduce((s,p)=>s+p[0],0),sy=P.reduce((s,p)=>s+p[1],0),sxx=P.reduce((s,p)=>s+p[0]*p[0],0),sxy=P.reduce((s,p)=>s+p[0]*p[1],0);const m=(n*sxy-sx*sy)/(n*sxx-sx*sx),k=(sy-m*sx)/n;const cu=(get('unk').A-k)/m;
         fit=`<p style="margin-top:8px">검량선 y = ${m.toFixed(4)}x ${k>=0?'+':'−'} ${Math.abs(k).toFixed(4)} → 미지시료 ≈ <b class="mono">${cu.toFixed(2)} ppm</b> <span class="small muted">(실제 ${unk.toFixed(2)} ppm)</span></p>`}
       $('#zmsg',el).innerHTML=`<div class="note ${ok&&zsOk?'ok':'warn'}"><div class="tw"><table class="table"><tr><th>칸</th>${d.map(x=>`<th>#${x.pos+1}</th>`).join('')}</tr><tr><th>시료</th>${d.map(x=>`<td>${esc(x.name)}</td>`).join('')}</tr><tr><th>흡광도</th>${d.map(x=>`<td class="mono">${x.A.toFixed(4)}</td>`).join('')}</tr></table></div>
-        ${!zsOk?'<p style="margin-top:6px">영점 조정 없이 측정해 값이 모두 크게 나왔어요.</p>':''}${!ok?'<p style="margin-top:6px">#1~#5 순서가 0 → 5 → 10 → 15 → 미지시료가 아니에요. 배치 현황표를 확인하세요.</p>':''}${fit}</div>`;
+        ${!zsOk?'<p style="margin-top:6px">영점 조정 없이 측정해 값이 모두 크게 나왔어요.</p>':''}${!ok?'<p style="margin-top:6px">#1 Blank, #2~#5 순서가 5 → 10 → 15 → 미지시료가 아니에요. 배치 현황표를 확인하세요.</p>':''}${fit}</div>`;
       if(ok&&zsOk&&done.lam&&done.zero){done.meas=1;markDone('zero')}}
     ds()}});
   ds();
@@ -1270,8 +1381,9 @@ function s0(el){
 /* 1. 교정 */
 function s1(el){
   const S=E.spec.S;const booted=S.power&&S.view!=='boot'&&S.view!=='off';
-  const st=[[booted,'전원 ON, 자체 진단 완료'],[S.mode==='quant','정량 모드 선택'],[S.lam===540,'파장 540 nm 설정'],[E.calib.zeroOk,'#8에 Blank(증류수) 넣고 오토 제로 → 0.0000 A']];
+  const st=[[booted,'전원 ON, 자체 진단 완료'],[S.mode==='quant','정량 모드 선택'],[S.lam===540,'파장 540 nm 설정'],[E.calib.zeroOk,'#1에 Blank(증류수) 넣고 오토 제로 → 0.0000 A']];
   el.innerHTML=`<div class="card"><h3>가. 분석장비의 Calibration</h3><div class="steps" style="margin-top:10px">${st.map((s,i)=>`<div class="stp ${s[0]?'done':st.slice(0,i).every(x=>x[0])?'cur':''}">${s[1]}</div>`).join('')}</div></div>
+  <div class="note" style="margin-top:10px">더 해 보기: 표준용액을 만든 뒤 [스펙트럼] 모드에서 #2의 KMnO₄ 용액을 400 → 700 nm로 스캔하면 540 nm 근처가 가장 높은 것을 확인할 수 있어요.</div>
   <div id="specHost" style="margin-top:14px"></div>${nextBtn('표준용액 조제로',E.calib.zeroOk,'교정을 마쳐야 다음으로 갈 수 있어요')}`;
   $('#specHost',el).appendChild(E.specEl);E.spec.refresh();
 }
@@ -1303,7 +1415,7 @@ function prepFlow(el,o){
     }else if(W.stage==='pip'){
       el.innerHTML=`<div class="card pop"><div class="row" style="justify-content:space-between"><h3>${o.title} — 피펫 (${W.v} mL${W.n>1?' × '+W.n+'회':''})</h3><button class="btn sm" id="back">← 선택으로</button></div><div id="pg" style="margin-top:10px"></div></div>`;
       $('#back',el).onclick=()=>{W.stage='choose';draw()};
-      pipetteGame($('#pg',el),{target:String(W.v),kind:PIPETTES[W.pip].n,color:o.srcColor,onDone:acc=>{W.acc=acc;setTimeout(()=>{W.stage='flask';draw()},900)}});
+      pipetteGame($('#pg',el),{target:String(W.v),kind:PIPETTES[W.pip].n,color:o.srcColor,srcLabel:o.srcName+' 비커',onDone:acc=>{W.acc=acc;setTimeout(()=>{W.stage='flask';draw()},900)}});
     }else if(W.stage==='flask'){
       const vol=W.v*W.n*W.acc;
       el.innerHTML=`<div class="card pop"><h3>${o.title} — 표선 맞추기</h3><div id="fg" style="margin-top:10px"></div></div>`;
@@ -1346,7 +1458,7 @@ function stdRange(){const a=E.stdA[5],b=E.stdA[15];return a&&b?[a.A,b.A]:null}
 function measState(id){const m=E.unkMeas.filter(x=>x.sid===id);if(!m.length)return '<span class="pill">미측정</span>';const r=stdRange();const A=m[m.length-1].A;if(!r)return `<span class="pill">${A.toFixed(4)}</span>`;return A>=r[0]&&A<=r[1]?`<span class="pill ok">범위 안 ${A.toFixed(4)}</span>`:`<span class="pill bad">범위 밖 ${A.toFixed(4)}</span>`}
 /* 4. 측정 */
 function s4(el){
-  el.innerHTML=`<div class="card"><h3>흡광도 측정</h3><p class="small muted" style="margin-top:4px">시료 선반에서 용액을 골라 #1~#7에 넣고 [측정]을 누르세요. #8은 Blank 자리입니다. 처음 넣는 용액은 셀 준비 절차를 거쳐요.</p>
+  el.innerHTML=`<div class="card"><h3>흡광도 측정</h3><p class="small muted" style="margin-top:4px">#1의 Blank로 영점을 잡은 뒤, 시료 선반에서 용액을 골라 #2~#8에 넣고 [측정]을 누르세요. 처음 넣는 용액은 셀 준비 절차를 거쳐요.</p>
    ${E.calib.zeroOk&&E.spec.S.lam===540&&E.spec.S.zeroed?'':'<div class="note warn" style="margin-top:8px">영점(540 nm, Blank)이 잡혀 있지 않아요. 측정 전에 오토 제로를 다시 하세요.</div>'}</div>
    <div id="specHost" style="margin-top:14px"></div>
    <div class="sheet" style="margin-top:14px" id="mtable"></div>
