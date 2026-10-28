@@ -157,7 +157,7 @@ main{padding-top:24px}
 .oi{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 10px}
 .oi .n{font-family:var(--fm);color:var(--muted);width:22px}
 .oi .t{flex:1}
-.oi button{border:1px solid var(--line);background:var(--surface2);border-radius:6px;width:34px;height:30px}
+.oi{cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none;transition:box-shadow .15s}.oi .grip{color:var(--muted);font-size:18px;line-height:1}.oi.drag{cursor:grabbing;border-color:var(--accent);background:var(--accent-soft);box-shadow:var(--shadow)}
 .feedback{margin-top:16px;border-radius:12px;padding:14px 16px}
 .feedback.ok{background:var(--ok-soft);color:var(--ink);border:1px solid var(--ok)}
 .feedback.bad{background:var(--bad-soft);color:var(--ink);border:1px solid var(--bad)}
@@ -179,6 +179,8 @@ main{padding-top:24px}
 .tools{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
 .tool{border:1.5px solid var(--line);background:var(--surface);border-radius:12px;padding:10px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px;font-weight:600;font-size:14px}
 .tool svg{width:70px;height:80px}
+.tpic{position:relative;display:grid;place-items:center}.tpic img{display:none}.tpic.has svg{display:none}.tpic.has img{display:block;object-fit:contain;border-radius:8px;background:#fff}.tool .tpic.has img{width:80px;height:80px}.toolbig .tpic.has img{width:140px;height:150px}
+.toolbig{min-width:150px;min-height:160px;padding:6px;display:grid;place-items:center;background:var(--surface2);border:1px solid var(--line);border-radius:14px;flex:none}.toolbig svg{width:130px;height:150px}
 .tool.sel{border-color:var(--accent);background:var(--accent-soft)}
 .bench{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
 .bench.wide{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}.bench.wider{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
@@ -458,8 +460,8 @@ function hubArt(n){
 
 /* ===== 3. 기초 이론 게임 ===== */
 const LEVELS={
-  1:{name:'실험실 루키',sub:'기초',color:'#2A7584',badge:'기초',desc:'빛·스펙트럼·분광광도계 구조부터 람베르트-비어 법칙, 최대 흡수 파장, 셀·광원·영점 조정까지 핵심 개념을 게임으로 익혀요.',n:10,timer:0},
-  2:{name:'분광 고인물',sub:'심화',color:'#D3121A',badge:'심화',desc:'흡광도·투광도 계산, 표준용액 조제, 희석배수, 보색 추론. 매번 숫자가 바뀌는 계산 문제가 나오고, 문제당 60초 타이머가 붙어요.',n:10,timer:60}
+  1:{name:'',sub:'기초',color:'#2A7584',badge:'기초',desc:'빛과 스펙트럼, 흡광도·투광도, 분광광도계 구조, 실험 기구 이름 등 기본 개념을 게임으로 익혀요.',n:10,timer:0},
+  2:{name:'',sub:'심화',color:'#D3121A',badge:'심화',desc:'람베르트-비어 법칙, 최대 흡수 파장, 셀·광원 선택, 영점 조정, 보색 관계와 실기 절차까지 깊이 있게 다뤄요. 문제당 60초 타이머가 붙어요.',n:10,timer:60}
 };
 const TYPE_NAME={cho:'초성퀴즈',jaeum:'자음 보고 맞추기',blank:'괄호 넣기',ox:'OX 퀴즈',choice:'골라 골라',match:'짝 맞추기',order:'순서 배열',calc:'계산 챌린지'};
 const QB={
@@ -543,7 +545,7 @@ const QB={
  {t:'cho',word:'중수소아크램프',q:'D₂ 분자를 전기 방전으로 분해해 자외선을 내는 광원 (4단어).',exp:'중수소 아크 램프: 200~400 nm 자외선 영역.'},
  {t:'order',q:'실기시험 미지시료 처리 순서로 배열하세요.',items:['미지시료를 작은 비커에 덜어 옴','피펫으로 일정량을 취해 메스플라스크에 넣음','증류수로 표선까지 채움','파라필름으로 밀봉하고 뒤집어 섞음','셀을 시료로 2~3회 헹군 뒤 4/5 채워 측정'],exp:'실기 영상의 진행 순서와 같습니다.'}
 ]};
-QB[1]=QB[1].concat(QB[2]);QB[2]=QB[3];delete QB[3];
+QB[2]=QB[2].concat(QB[3]);delete QB[3];[1,2].forEach(k=>{QB[k]=QB[k].filter(q=>q.t!=='calc')});
 
 let Q=null;
 function renderTheory(){
@@ -554,7 +556,7 @@ function renderTheory(){
   <p class="muted" style="margin-top:8px;max-width:66ch">교과서 「01 흡수 분광법」과 「분광 분석」 교재 내용으로 만든 문제입니다. 하트 3개로 시작해 틀리면 하나씩 잃어요. 연속으로 맞히면 콤보 보너스가 붙습니다.</p>
   <div class="levels" style="margin-top:20px">
    ${[1,2].map(l=>{const L=LEVELS[l];return `<button class="lv" style="--c:${L.color}" data-lv="${l}">
-     <span class="row"><span class="badge">${L.badge}</span><span><span class="small muted">${L.sub}</span><br><b style="font-size:19px">${L.name}</b></span></span>
+     <span class="row"><span class="badge">${l}</span><b style="font-size:26px;font-family:var(--fd);font-weight:400">${L.sub}</b></span>
      <span class="small">${L.desc}</span>
      <span class="row small muted" style="gap:6px">${[...new Set(QB[l].map(q=>q.t))].map(t=>`<span class="pill">${TYPE_NAME[t]}</span>`).join('')}</span>
      ${best[l]!=null?`<span class="pill ok">최고 ${best[l]}점</span>`:''}
@@ -586,7 +588,6 @@ function pickQuestions(l){
   const n=LEVELS[l].n;const key='seen'+l;let seen=store.get(key,[]);
   let fresh=QB[l].filter(q=>!seen.includes(q.id));
   let out=[];
-  if(l===2){out=shuffle(GEN).slice(0,4).map(g=>g())}
   const need=n-out.length;
   const pickFrom=pool=>{const byType={};const res=[];for(const q of shuffle(pool)){byType[q.t]=byType[q.t]||0;if(byType[q.t]<3&&res.length<need){res.push(q);byType[q.t]++}}for(const q of shuffle(pool)){if(res.length>=need)break;if(!res.includes(q))res.push(q)}return res};
   let st=pickFrom(fresh);
@@ -598,7 +599,7 @@ function startQuiz(l){Q={l,qs:pickQuestions(l),i:0,hearts:3,score:0,combo:0,maxC
 function hudHTML(){
   const L=LEVELS[Q.l];
   return `<div class="hud">
-    <span class="row" style="gap:8px"><span class="pill" style="background:${L.color};color:#fff;border:0">${L.badge} ${L.name}</span><span class="mono small muted">${Q.i+1} / ${Q.qs.length}</span></span>
+    <span class="row" style="gap:8px"><span class="pill" style="background:${L.color};color:#fff;border:0">${L.sub}</span><span class="mono small muted">${Q.i+1} / ${Q.qs.length}</span></span>
     <div class="prog" aria-hidden="true"><i style="width:${(Q.i/Q.qs.length)*100}%"></i></div>
     <span class="hearts" aria-label="남은 하트 ${Q.hearts}">${[0,1,2].map(k=>`<svg class="heart" viewBox="0 0 24 22"><path d="M12 21 C-6 9 4 -3 12 5 C20 -3 30 9 12 21Z" fill="${k<Q.hearts?'var(--bad)':'var(--line)'}"/></svg>`).join('')}</span>
     <span class="mono" style="font-weight:600">${Q.score}점</span>
@@ -664,11 +665,21 @@ function hintFor(q){
   if(q.t==='calc')return q.exp.split(/[=→]/)[0].trim()+' … 공식을 떠올려 보세요';
   return `첫 글자는 "${String(q.a[0])[0]}"`;
 }
-function drawOrder(){
-  const el=$('#olist');el.innerHTML=Q.ord.map((t,i)=>`<div class="oi"><span class="n">${i+1}</span><span class="t">${esc(t)}</span><button data-up="${i}" aria-label="위로">▲</button><button data-dn="${i}" aria-label="아래로">▼</button></div>`).join('');
-  $$('[data-up]',el).forEach(b=>b.onclick=()=>{const i=+b.dataset.up;if(i>0){[Q.ord[i-1],Q.ord[i]]=[Q.ord[i],Q.ord[i-1]];drawOrder()}});
-  $$('[data-dn]',el).forEach(b=>b.onclick=()=>{const i=+b.dataset.dn;if(i<Q.ord.length-1){[Q.ord[i+1],Q.ord[i]]=[Q.ord[i],Q.ord[i+1]];drawOrder()}});
+
+/* 마우스(손가락)로 끌어서 순서 바꾸기 */
+function sortableList(el,arr,redraw){
+  el.innerHTML=arr.map((t,i)=>`<div class="oi" data-i="${i}" tabindex="0" aria-label="${i+1}번째: ${esc(t)}. 끌거나 위아래 화살표로 이동"><span class="grip" aria-hidden="true">⠿</span><span class="n">${i+1}</span><span class="t">${esc(t)}</span></div>`).join('');
+  let drag=null;
+  $$('.oi',el).forEach(it=>{
+    it.addEventListener('pointerdown',e=>{e.preventDefault();drag=+it.dataset.i;it.classList.add('drag');el.setPointerCapture&&el.setPointerCapture(e.pointerId)});
+    it.addEventListener('keydown',e=>{const i=+it.dataset.i;const d=e.key==='ArrowUp'?-1:e.key==='ArrowDown'?1:0;if(!d)return;e.preventDefault();const k=i+d;if(k<0||k>=arr.length)return;[arr[i],arr[k]]=[arr[k],arr[i]];redraw();$(`.oi[data-i="${k}"]`,el)?.focus()});
+  });
+  el.onpointermove=e=>{if(drag==null)return;const items=$$('.oi',el);let k=items.length-1;for(let j=0;j<items.length;j++){const r=items[j].getBoundingClientRect();if(e.clientY<r.top+r.height/2){k=j;break}}
+    if(k!==drag){const [m]=arr.splice(drag,1);arr.splice(k,0,m);drag=k;el.innerHTML='';redraw(k)}};
+  el.onpointerup=el.onpointercancel=()=>{if(drag==null)return;drag=null;$$('.oi',el).forEach(x=>x.classList.remove('drag'))};
+  return {setDrag(k){drag=k;const it=$(`.oi[data-i="${k}"]`,el);if(it)it.classList.add('drag')}};
 }
+function drawOrder(k){const sl=sortableList($('#olist'),Q.ord,drawOrder);if(k!=null)sl.setDrag(k)}
 function checkInput(){
   if(Q.answered)return;const q=Q.qs[Q.i];const v=$('#ans').value.trim();if(!v){toast('답을 입력하세요');return}
   let ok;
@@ -694,10 +705,10 @@ function endQuiz(){
   const msg={S:'분광광도계가 당신을 알아봅니다. 다음 난이도 도전!',A:'거의 다 왔어요. 오답노트만 한 번 보면 S랭크.',B:'개념의 뼈대는 잡혔어요. 오답노트를 꼭 확인하세요.',C:'괜찮아요. 교과서 188~192쪽을 보고 다시 도전!'}[rank];
   const best=store.get('quizBest',{});if(best[Q.l]==null||Q.score>best[Q.l]){best[Q.l]=Q.score;store.set('quizBest',best)}
   const b2=store.get('best',{});b2.theory=Math.max(b2.theory||0,Math.round(rate*100));store.set('best',b2);
-  record('기초 이론',`${LEVELS[Q.l].sub} · ${LEVELS[Q.l].name}`,Q.score,`정답 ${Q.right}/${total} · ${rank}랭크 · 풀이 ${Q.right+Q.wrong.length}/${total} · 최대 콤보 ${Q.maxCombo}${Q.hearts<=0?' · 하트 소진':''}`,Math.round(TW[LEVELS[Q.l].sub]*Q.right/total*10)/10);
+  record('기초 이론',`${LEVELS[Q.l].sub}`,Q.score,`정답 ${Q.right}/${total} · ${rank}랭크 · 풀이 ${Q.right+Q.wrong.length}/${total} · 최대 콤보 ${Q.maxCombo}${Q.hearts<=0?' · 하트 소진':''}`,Math.round(TW[LEVELS[Q.l].sub]*Q.right/total*10)/10);
   const L=LEVELS[Q.l];
   app.innerHTML=`<div class="card pop" style="text-align:center">
-    <p class="eyebrow">${L.badge} ${L.name} 결과</p>
+    <p class="eyebrow">기초 이론 · ${L.sub} 결과</p>
     <div class="rank" style="margin-top:10px">${rank}</div>
     <p style="margin-top:8px;font-size:17px">${msg}</p>
     <div class="row" style="justify-content:center;margin-top:14px">
@@ -1090,6 +1101,9 @@ function markDone(k){const d=store.get('prac',{});const first=!d[k];d[k]=1;store
   if(!SESSION_DONE.has((CUR&&CUR.id)+k)){SESSION_DONE.add((CUR&&CUR.id)+k);record('기초 실습',(PTABS.find(x=>x[0]===k)||[k,k])[1],100,'미션 완료',1)}
   if(first){const b2=store.get('best',{});b2.practice=Math.round(Object.keys(d).length/PTABS.length*100);store.set('best',b2);const t=$(`[data-t="${k}"]`);if(t&&!t.querySelector('.ck'))t.insertAdjacentHTML('beforeend',' <span class="ck">✓</span>')}}
 
+/* 기구 사진: 저장소 img 폴더에 img/<키>.jpg 를 올리면 그림 대신 사진이 나옵니다 (없으면 그림) */
+const TOOL_PHOTO={flask:'flask',vpip:'grad-pipette',hpip:'vol-pipette',filler:'filler',beaker:'beaker',wash:'wash-bottle',film:'parafilm',cuvette:'cuvette',wiper:'wiper',spec:'spectrophotometer'};
+function toolPic(t){const f=TOOL_PHOTO[t.k];return `<span class="tpic">${t.svg()}${f?`<img src="img/${f}.jpg" alt="${t.n} 사진" onload="this.parentNode.classList.add('has')" onerror="this.remove()">`:''}</span>`}
 const TOOLS=[
  {k:'flask',n:'메스플라스크',svg:()=>flaskSVG({w:70,h:80,level:.6,alpha:.4}),use:'정확한 부피(100 mL)의 용액을 만드는 기구. 표준용액 조제와 미지시료 희석에 씁니다.',how:['용액을 피펫으로 넣은 뒤 증류수를 채운다','표선 근처에서는 세척병으로 한 방울씩','메니스커스 아랫면을 눈높이에서 표선에 맞춘다','파라필름으로 밀봉하고 천천히 뒤집어 섞는다'],care:'표선을 넘기면 덜어내지 말고 다시 조제합니다. 가열하지 않아요.'},
  {k:'vpip',n:'눈금 피펫',svg:()=>`<svg viewBox="0 0 70 80"><rect x="31" y="4" width="8" height="64" fill="none" stroke="var(--ink)" stroke-width="1.5"/>${Array.from({length:10},(_,i)=>`<line x1="31" x2="${i%5?35:39}" y1="${10+i*5.5}" y2="${10+i*5.5}" stroke="var(--ink)"/>`).join('')}<path d="M31 68 L34 78 H36 L39 68" fill="none" stroke="var(--ink)" stroke-width="1.5"/><rect x="32" y="36" width="6" height="32" fill="var(--liquid)" opacity=".6"/></svg>`,use:'눈금이 있어 0.5 mL, 1 mL, 1.5 mL처럼 원하는 부피를 옮길 수 있어요. 표준용액(1000 ppm) 소량을 취할 때 사용.',how:['필러를 끼우고 A로 공기를 뺀다','끝을 용액에 깊숙이 넣고 S로 흡입','E로 원하는 눈금에 맞춘 뒤 옮긴다'],care:'입으로 빨지 않아요. 눈금은 눈높이에서 읽어요.'},
@@ -1105,9 +1119,9 @@ const TOOLS=[
 function pTools(el){
   let cur=TOOLS[0];const seen=new Set();
   function draw(){
-    el.innerHTML=`<div class="bench"><div class="stack"><div class="tools">${TOOLS.map(t=>`<button class="tool ${cur.k===t.k?'sel':''}" data-k="${t.k}">${t.svg()}<span>${t.n}</span>${seen.has(t.k)?'<span class="small" style="color:var(--ok)">확인함</span>':''}</button>`).join('')}</div>
+    el.innerHTML=`<div class="bench"><div class="stack"><div class="tools">${TOOLS.map(t=>`<button class="tool ${cur.k===t.k?'sel':''}" data-k="${t.k}">${toolPic(t)}<span>${t.n}</span>${seen.has(t.k)?'<span class="small" style="color:var(--ok)">확인함</span>':''}</button>`).join('')}</div>
       <p class="small muted">${seen.size}/${TOOLS.length}개 확인 · 모두 살펴보면 퀵 퀴즈가 열려요</p></div>
-     <div class="card pop"><div class="row">${cur.svg()}<h3>${cur.n}</h3></div>
+     <div class="card pop"><div class="row" style="align-items:center;gap:18px"><div class="toolbig">${toolPic(cur)}</div><h3 style="font-size:26px">${cur.n}</h3></div>
       <p style="margin-top:10px"><b>용도</b> ${cur.use}</p>
       <p style="margin-top:10px"><b>조작 방법</b></p><ol style="margin:4px 0 0;padding-left:20px">${cur.how.map(h=>`<li>${h}</li>`).join('')}</ol>
       <div class="note warn" style="margin-top:12px">${cur.care}</div>
@@ -1260,9 +1274,7 @@ function pCell(el){
       $$('[data-fno]',el).forEach(b=>b.onclick=()=>pickFace(+b.dataset.fno));
       const right=['증류수로 셀 세척','측정할 용액으로 2~3회 헹구기','용액을 4/5 정도 채우기','와이퍼로 바깥면 닦기','투명한 면이 광로를 향하게 셀 홀더에 넣기'];
       S.order=S.order||shuffle(right);
-      const drawO=()=>{$('#col',el).innerHTML=S.order.map((t,i)=>`<div class="oi"><span class="n">${i+1}</span><span class="t">${t}</span><button data-u="${i}">▲</button><button data-d="${i}">▼</button></div>`).join('');
-        $$('[data-u]',el).forEach(b=>b.onclick=()=>{const i=+b.dataset.u;if(i>0){[S.order[i-1],S.order[i]]=[S.order[i],S.order[i-1]];drawO()}});
-        $$('[data-d]',el).forEach(b=>b.onclick=()=>{const i=+b.dataset.d;if(i<S.order.length-1){[S.order[i+1],S.order[i]]=[S.order[i],S.order[i+1]];drawO()}})};drawO();
+      const drawO=k=>{const sl=sortableList($('#col',el),S.order,drawO);if(k!=null)sl.setDrag(k)};drawO();
       $('#cok',el).onclick=()=>{const ok=S.order.join()===right.join();$('#ofb',el).innerHTML=`<div class="note ${ok?'ok':'bad'}" style="margin-top:8px">${ok?`완벽! 셀 고르기 ${S.score}/${scen.length}. 셀 미션 완료.`:'순서를 다시 확인하세요. 헹굼은 채우기 전, 닦기는 넣기 전!'}</div>`;if(ok&&S.held)markDone('cell');else if(ok&&!S.held)toast('셀 잡는 면 문제도 맞혀야 완료돼요')};
     }
   }
